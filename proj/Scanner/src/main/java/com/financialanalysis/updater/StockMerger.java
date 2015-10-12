@@ -2,6 +2,7 @@ package com.financialanalysis.updater;
 
 import com.financialanalysis.data.StockFA;
 import com.financialanalysis.data.StockPrice;
+import com.financialanalysis.data.Symbol;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,9 +13,9 @@ public class StockMerger {
     /**
      * Merge updatedStocks into loadedStocks, if updatedStock does not exist in loadedStocks, add it
      */
-    public Map<String, StockFA> merge(Map<String, StockFA> loadedStocks, Map<String, StockFA> updatedStocks) {
-        Set<String> updatedSymbols = updatedStocks.keySet();
-        for(String symbol : updatedSymbols) {
+    public Map<Symbol, StockFA> merge(Map<Symbol, StockFA> loadedStocks, Map<Symbol, StockFA> updatedStocks) {
+        Set<Symbol> updatedSymbols = updatedStocks.keySet();
+        for(Symbol symbol : updatedSymbols) {
             //Add it to existing stock
             if(loadedStocks.containsKey(symbol)) {
                 StockFA oldStock = loadedStocks.get(symbol);
@@ -51,6 +52,6 @@ public class StockMerger {
         hist.addAll(aHist);
         hist.addAll(bHist);
 
-        return new StockFA(a.getSymbol(), a.getName(), a.getCurrency(), a.getStockExchange(), hist);
+        return new StockFA(a.getSymbol(), hist);
     }
 }

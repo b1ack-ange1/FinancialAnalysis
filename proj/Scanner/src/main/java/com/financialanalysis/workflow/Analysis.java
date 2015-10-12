@@ -2,7 +2,7 @@ package com.financialanalysis.workflow;
 
 import com.financialanalysis.data.Account;
 import com.financialanalysis.data.StockFA;
-import com.financialanalysis.data.StockPrice;
+import com.financialanalysis.data.Symbol;
 import com.financialanalysis.graphing.LineChart;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.google.inject.Inject;
@@ -13,7 +13,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -34,9 +33,9 @@ public class Analysis {
     }
 
     public void analyzeStocks(List<StockFA> stocks) {
-        StockStrategyRunner runner = new StockStrategyRunner(account.copy());
-        runner.setStockFAs(stocks);
-        executorService.execute(runner);
+//        StrategyRunner runner = new StrategyRunner(account.copy());
+//        runner.setStockFAs(stocks);
+//        executorService.execute(runner);
     }
 
     public void reportResultsByStock() {
@@ -53,7 +52,7 @@ public class Analysis {
         // Report results
         List<Account> allAccounts = new ArrayList<>();
         for(StrategyOutput result : getOutput()) {
-            Map<String, Account> accounts = result.getAccounts();
+            Map<Symbol, Account> accounts = result.getAccounts();
             List<Account> accountList = new ArrayList<>(accounts.values());
             for(Account account : accountList) {
                 if(!account.getActivity().isEmpty()) {

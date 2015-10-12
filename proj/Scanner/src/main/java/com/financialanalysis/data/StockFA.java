@@ -9,10 +9,7 @@ import java.util.List;
 
 @Data
 public class StockFA {
-    private final String symbol;
-    private final String name;
-    private final String currency;
-    private final String stockExchange;
+    private final Symbol symbol;
     private final List<StockPrice> history;
 
     public String getJson() {

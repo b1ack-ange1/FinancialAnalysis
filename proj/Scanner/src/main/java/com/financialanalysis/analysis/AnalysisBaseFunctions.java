@@ -1,8 +1,10 @@
 package com.financialanalysis.analysis;
 
+import com.financialanalysis.data.Symbol;
 import com.financialanalysis.data.Trend;
 import com.financialanalysis.graphing.Point;
 import com.google.common.collect.Lists;
+import lombok.extern.log4j.Log4j;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.joda.time.DateTime;
 
@@ -11,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Log4j
 public class AnalysisBaseFunctions {
     private static final int NUM_DAYS_WITHOUT_CHANGE_ALLOWED = 5;
     private static final int NUM_PERIODS_WITHOUT_CHANGE_ALLOWED = 2;
@@ -223,7 +226,7 @@ public class AnalysisBaseFunctions {
      *
      * points: min or max extrma as determined by min or max
      */
-    public static Trend findTrend(Map<Integer, Point> points, int startIdx, int period, List<DateTime> dates) {
+    public static Trend findTrend(Map<Integer, Point> points, int startIdx, int period, List<DateTime> dates, Symbol symbol) {
         SimpleRegression sr = new SimpleRegression();
         List<Point> pointsInTrend = new ArrayList<>();
 
@@ -238,6 +241,10 @@ public class AnalysisBaseFunctions {
         DateTime start = new DateTime();
         DateTime end  = new DateTime();
         if(!pointsCorrectOrder.isEmpty()) {
+            if((int) pointsCorrectOrder.get(0).getX() > dates.size()) {
+                log.error("Found invalid case for " + symbol.getSymbol()    );
+            }
+
             start = dates.get((int) pointsCorrectOrder.get(0).getX());
             end = dates.get((int) pointsCorrectOrder.get(pointsCorrectOrder.size() - 1).getX());
         }

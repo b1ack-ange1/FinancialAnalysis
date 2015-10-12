@@ -31,7 +31,7 @@ public class GraphWrapper {
 //    }
 //
 //    public void render() {
-//        StockChart graph = new StockChart(title);
+//        StockChartCore graph = new StockChartCore(title);
 //
 //        for(GraphSeries gs : series) {
 //            graph.addXYLine(gs.getX(), gs.getY(), gs.getName());

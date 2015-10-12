@@ -1,13 +1,15 @@
 package com.financialanalysis.analysis;
 
-
 import com.financialanalysis.data.StockPrice;
+import com.financialanalysis.data.Symbol;
 import org.joda.time.DateTime;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -50,6 +52,11 @@ public class AnalysisTools {
         List<String> newList = new ArrayList<>();
         newList.addAll(list);
         return newList;
+    }
+
+    public static List<Symbol> deepCopySymbolList(List<Symbol> list) {
+        if(list == null) return new LinkedList<>();
+        return list.stream().map(s -> s.clone()).collect(Collectors.toList());
     }
 
     public static double[] sub(double[] from, double[] to) {

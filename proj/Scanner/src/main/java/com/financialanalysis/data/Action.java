@@ -10,9 +10,9 @@ public class Action {
     private final double shares;
     private final double price;
     private final DateTime date;
-    private final String symbol;
+    private final Symbol symbol;
 
-    public Action(String action, double amount, double shares, double price, DateTime date, String symbol) {
+    public Action(String action, double amount, double shares, double price, DateTime date, Symbol symbol) {
         this.action = action;
         this.amount = amount;
         this.shares = shares;

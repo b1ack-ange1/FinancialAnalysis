@@ -12,7 +12,7 @@ public class Main {
         FAService faService = injector.getInstance(FAService.class);
         faService.start();
 
-        Thread.sleep(1000);
+//        Thread.sleep(1000);
         faService.stop();
     }
 }

@@ -1,6 +1,7 @@
 package com.financialanalysis.data;
 
 import com.google.gson.Gson;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j;
@@ -12,7 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Log4j
-@Getter
+@Data
 public class Account {
     private final double initialBalance;
 
@@ -22,11 +23,13 @@ public class Account {
     private double percentageGainLoss;
     private int numBuys;
     private int numSells;
-    private int numTrades;
-    @Setter private String symbol;
+    private int numTrades;private Symbol symbol;
     private List<Action> activity;
 
-    public Account(double cashBalance) {
+    private static int DEFAULT_COMMISSION_FEE = 7;
+
+    public Account() {
+        double cashBalance = 10000;
         this.cashBalance = cashBalance;
         this.totalBalance = cashBalance;
         this.numShares = 0;
@@ -38,17 +41,15 @@ public class Account {
         activity = new ArrayList<>();
     }
 
-    private static int DEFAULT_COMMISSION_FEE = 7;
-
-    public void buyAll(double askPrice, DateTime date, String symbol) {
+    public void buyAll(double askPrice, DateTime date, Symbol symbol) {
         buy( (cashBalance - DEFAULT_COMMISSION_FEE)/askPrice, askPrice, date, symbol);
     }
 
-    public void sellAll(double bidPrice, DateTime date, String symbol) {
+    public void sellAll(double bidPrice, DateTime date, Symbol symbol) {
         sell(numShares, bidPrice, date, symbol);
     }
 
-    public void buy(double numSharesToBuy, double askPrice, DateTime date, String symbol) {
+    public void buy(double numSharesToBuy, double askPrice, DateTime date, Symbol symbol) {
         if(numSharesToBuy > 0) {
             double cost = (numSharesToBuy * askPrice) + DEFAULT_COMMISSION_FEE;
             if(cost <= cashBalance) {
@@ -64,7 +65,7 @@ public class Account {
         }
     }
 
-    public void sell(double numShareToSell, double bidPrice, DateTime date, String symbol) {
+    public void sell(double numShareToSell, double bidPrice, DateTime date, Symbol symbol) {
         if(0 < numShareToSell && numShareToSell <= numShares) {
             double earning = (numShareToSell * bidPrice) - DEFAULT_COMMISSION_FEE;
 
@@ -95,11 +96,11 @@ public class Account {
     }
 
     public static Account createDefaultAccount() {
-        return new Account(10000);
+        return new Account();
     }
 
     public Account copy() {
-        return new Account(this.getInitialBalance());
+        return new Account();
     }
 
     public String getJson() {

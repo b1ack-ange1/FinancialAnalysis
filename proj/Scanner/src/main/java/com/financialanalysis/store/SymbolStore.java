@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class SymbolStore {
@@ -46,6 +47,15 @@ public class SymbolStore {
         size = symbols.size();
 
         return symbols;
+    }
+
+    public List<Symbol> load(List<String> symbols) {
+        List<Symbol> allSymbols = load();
+        List<Symbol> needed = new LinkedList<>();
+        for(Symbol s : allSymbols) {
+            if(symbols.contains(s.getSymbol())) needed.add(s);
+        }
+        return needed;
     }
 
     @SneakyThrows

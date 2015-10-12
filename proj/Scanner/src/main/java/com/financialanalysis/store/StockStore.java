@@ -4,6 +4,7 @@ import com.financialanalysis.data.StockFA;
 import com.financialanalysis.data.StockPrice;
 import com.financialanalysis.data.StockPriceDeserializer;
 import com.financialanalysis.data.StockPriceSerializer;
+import com.financialanalysis.data.Symbol;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.SneakyThrows;
@@ -36,13 +37,13 @@ public class StockStore {
     }
 
     @SneakyThrows
-    public Map<String, StockFA> load(List<String> symbols) {
+    public Map<Symbol, StockFA> load(List<Symbol> symbols) {
         Gson gson = new GsonBuilder().registerTypeAdapter(StockPrice.class, new StockPriceDeserializer()).create();
 //        Type listType = new TypeToken<ArrayList<StockFA>>() {}.getType();
-        Map<String, StockFA> map = new HashMap<>();
+        Map<Symbol, StockFA> map = new HashMap<>();
 
-        for(String symbol : symbols) {
-            File stockFile = new File(getStockStoreDir() + symbol);
+        for(Symbol symbol : symbols) {
+            File stockFile = new File(getStockStoreDir() + symbol.getSymbol());
             if(!stockFile.exists()) continue;
 
             String json = FileUtils.readFileToString(stockFile);
@@ -58,19 +59,20 @@ public class StockStore {
     }
 
     @SneakyThrows
-    public void store(Map<String, StockFA> stocks) {
+    public void store(Map<Symbol, StockFA> stocks) {
         Gson gson = new GsonBuilder().registerTypeAdapter(StockPrice.class, new StockPriceSerializer()).create();
-        Set<String> symbols = stocks.keySet();
+        Set<Symbol> symbols = stocks.keySet();
 
-        for(String symbol : symbols) {
+        for(Symbol symbol : symbols) {
+//            log.info("Storing: " + symbol);
             String json = gson.toJson(stocks.get(symbol));
-            FileUtils.writeStringToFile(new File(getStockStoreDir() + symbol), json);
+            FileUtils.writeStringToFile(new File(getStockStoreDir() + symbol.getSymbol()), json);
         }
     }
 
-    public void delete(List<String> symbols) {
-        for(String symbol : symbols) {
-            File stockFile = new File(getStockStoreDir() + symbol);
+    public void delete(List<Symbol> symbols) {
+        for(Symbol symbol : symbols) {
+            File stockFile = new File(getStockStoreDir() + symbol.getSymbol());
             if(!stockFile.exists()) continue;
             stockFile.delete();
         }
