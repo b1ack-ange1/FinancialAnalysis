@@ -10,7 +10,9 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ReportStore {
     static {
@@ -28,6 +30,7 @@ public class ReportStore {
     }
 
     /**
+     * Save to:
      * var/charts/<date>/<chart-name>
      */
     @SneakyThrows
@@ -40,5 +43,12 @@ public class ReportStore {
             File file = new File(getReportStoreDir() + date + "/" + chart.getTitle().replaceAll(" ", "_") + ".jpg");
             ChartUtilities.saveChartAsJPEG(file, 1.0f, chart.getChart(), 1920, 1080);
         }
+    }
+
+    public List<File> loadFromDate(DateTime dateTime) {
+        String date = dateTime.toString().split("T")[0];
+        Path path = Paths.get(getReportStoreDir() + date);
+        File dir = path.toFile();
+        return Arrays.asList(dir.listFiles()).stream().filter(f -> f.getName().contains(".jpg")).collect(Collectors.toList());
     }
 }

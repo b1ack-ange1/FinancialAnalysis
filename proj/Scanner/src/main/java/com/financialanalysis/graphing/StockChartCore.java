@@ -40,8 +40,6 @@ import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
 public class StockChartCore /*extends ApplicationFrame*/ {
     private final String title;
 
-    private final double volumeOffset = 1.0;
-
     private List<Marker> domainMarkers = new ArrayList<>();
     private List<Marker> rangeMarkers = new ArrayList<>();
     private TimeSeriesCollection volumeDataset = new TimeSeriesCollection();
@@ -185,8 +183,6 @@ public class StockChartCore /*extends ApplicationFrame*/ {
             series.add(getDay(x.get(i)), normVolume[i]);
         }
         volumeDataset.addSeries(series);
-
-//        addXYLine(x, normVolume, "Volume");
     }
 
     /**

@@ -1,8 +1,7 @@
 package com.financialanalysis.workflow;
 
-import com.financialanalysis.data.StockFA;
-import com.financialanalysis.data.Symbol;
 import com.financialanalysis.questrade.Questrade;
+import com.financialanalysis.reports.Emailer;
 import com.financialanalysis.reports.Reporter;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
@@ -14,8 +13,6 @@ import com.financialanalysis.updater.SymbolUpdater;
 import com.google.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
-
-import java.util.List;
 
 @Log4j
 public class ServiceMain implements Runnable {
@@ -30,6 +27,7 @@ public class ServiceMain implements Runnable {
     private final StrategyRunner strategyRunner;
     private final Reporter reporter;
     private final SymbolStore symbolStore;
+    private final Emailer emailer;
 
     @Inject
     public ServiceMain(Analysis analysis,
@@ -42,7 +40,8 @@ public class ServiceMain implements Runnable {
                        SymbolUpdater symbolUpdater,
                        StrategyRunner strategyRunner,
                        Reporter reporter,
-                       SymbolStore symbolStore) {
+                       SymbolStore symbolStore,
+                       Emailer emailer) {
         this.analysis = analysis;
         this.stockPuller = stockPuller;
         this.stockRetriever = stockRetriever;
@@ -54,29 +53,32 @@ public class ServiceMain implements Runnable {
         this.strategyRunner = strategyRunner;
         this.reporter = reporter;
         this.symbolStore = symbolStore;
+        this.emailer = emailer;
     }
 
+    /**
+     1) Update SymbolStore
+     2) Update StockStore
+     3) Run all stratgies
+     4) Generate report
+     5) Email report
+     */
     @Override
     @SneakyThrows
     public void run() {
         log.info("Starting ServiceMain");
-        /**
-         1) Update SymbolStore
-         2) Update StockStore
-         3) Run all stratgies
-         4) Generate report
-         5) Email report
-         */
 
-//        questrade.authenticate();
-//        questrade.getSymbolsId(Arrays.asList("1","2","3","4","5"));
-//        List<Symbol> symbols = questrade.symbolSearch("BMO");
+        long start = System.nanoTime();
 
         symbolUpdater.refresh();
-//        stockUpdater.update();
+        stockUpdater.update();
         strategyRunner.runAllStrategies();
         reporter.generateReports();
+        emailer.emailReports();
 
+        long elapsedTime = System.nanoTime() - start;
+        double seconds = (double)elapsedTime / 1000000000.0;
+        log.info(String.format("Took %d seconds", seconds));
     }
 
 //    private void performBackTest() {

@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class Reporter {
-    private final StrategyRunner strategyRunner; //TODO: This needs to be a singleton
+    private final StrategyRunner strategyRunner;
     private final ReportStore reportStore;
 
     @Inject
@@ -39,9 +39,6 @@ public class Reporter {
 
                         for(Symbol symbol : symbols) {
                             List<StockChart> charts = output.getCharts().get(symbol);
-//                            for(StockChart chart : charts) {
-//                                chart.render();
-//                            }
                             reportStore.save(symbol, charts, currentDate);
                         }
                     }

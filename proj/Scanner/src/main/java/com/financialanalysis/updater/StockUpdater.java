@@ -113,7 +113,7 @@ public class StockUpdater {
         long end = System.nanoTime();
         long elapsedTime = end - start;
         double seconds = (double)elapsedTime / 1000000000.0;
-        log.info(String.format("Processed %d stocks in %.2f seconds", symbols.size(), seconds));
+        log.info(String.format("Processed %d stocks in %.2f seconds", symbols.size(), (int) seconds));
     }
 
     /**
