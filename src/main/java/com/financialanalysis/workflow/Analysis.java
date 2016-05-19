@@ -39,39 +39,39 @@ public class Analysis {
     }
 
     public void reportResultsByStock() {
-        // Wait for everthing to be finished
-        executorService.shutdown();
-        try {
-            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            // Stop everything and report what we have
-            log.error("All threads did not shut down, killing them ...");
-            executorService.shutdownNow();
-        }
-
-        // Report results
-        List<Account> allAccounts = new ArrayList<>();
-        for(StrategyOutput result : getOutput()) {
-            Map<Symbol, Account> accounts = result.getAccounts();
-            List<Account> accountList = new ArrayList<>(accounts.values());
-            for(Account account : accountList) {
-                if(!account.getActivity().isEmpty()) {
-                    allAccounts.add(account);
-                    symbols += "\"" + account.getSymbol() + "\",";
-                }
-            }
-        }
-
-        Collections.sort(allAccounts, (a1, a2) -> (int) ( (a1.getPercentageGainLoss() * 100.0) - (a2.getPercentageGainLoss() * 100.0)));
-        for(Account account : allAccounts) {
-            if(!account.getActivity().isEmpty()) {
-//                reportAccount(account);
-            }
-        }
-        log.info(symbols.replaceAll("\n", ""));
-        reportActivityDates(allAccounts);
-        reportAverage(allAccounts);
-        reportReturnsPercentiles(allAccounts);
+//        // Wait for everthing to be finished
+//        executorService.shutdown();
+//        try {
+//            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+//        } catch (InterruptedException e) {
+//            // Stop everything and report what we have
+//            log.error("All threads did not shut down, killing them ...");
+//            executorService.shutdownNow();
+//        }
+//
+//        // Report results
+//        List<Account> allAccounts = new ArrayList<>();
+//        for(StrategyOutput result : getOutput()) {
+//            Map<Symbol, Account> accounts = result.getAccounts();
+//            List<Account> accountList = new ArrayList<>(accounts.values());
+//            for(Account account : accountList) {
+//                if(!account.getActivity().isEmpty()) {
+//                    allAccounts.add(account);
+//                    symbols += "\"" + account.getSymbol() + "\",";
+//                }
+//            }
+//        }
+//
+//        Collections.sort(allAccounts, (a1, a2) -> (int) ( (a1.getPercentageGainLoss() * 100.0) - (a2.getPercentageGainLoss() * 100.0)));
+//        for(Account account : allAccounts) {
+//            if(!account.getActivity().isEmpty()) {
+////                reportAccount(account);
+//            }
+//        }
+//        log.info(symbols.replaceAll("\n", ""));
+//        reportActivityDates(allAccounts);
+//        reportAverage(allAccounts);
+//        reportReturnsPercentiles(allAccounts);
     }
 
     private void reportAccount(Account account) {

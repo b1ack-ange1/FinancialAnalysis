@@ -1,10 +1,13 @@
 package com.financialanalysis.workflow;
 
+import com.financialanalysis.data.StockFA;
 import com.financialanalysis.questrade.Questrade;
 import com.financialanalysis.reports.Emailer;
 import com.financialanalysis.reports.Reporter;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
+import com.financialanalysis.strategy.AbstractStrategy;
+import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.updater.StockMerger;
 import com.financialanalysis.updater.StockPuller;
 import com.financialanalysis.updater.StockRetriever;
@@ -15,6 +18,8 @@ import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @Log4j
 public class ServiceMain implements Runnable {
@@ -72,15 +77,38 @@ public class ServiceMain implements Runnable {
         long start = System.nanoTime();
 
 //        symbolUpdater.refresh();
-        stockUpdater.update();
-        strategyRunner.runAllStrategies();
-        reporter.generateReports();
-        emailer.emailReports();
+//        stockUpdater.update();
+//        List<StrategyOutput> allResults = strategyRunner.run();
+        List<StrategyOutput> allResults = strategyRunner.runOnStocks(stockRetriever.getUniqueRandomStocks(100));
+        reporter.generateReports(allResults);
+//        emailer.emailReports();
 
         long elapsedTime = System.nanoTime() - start;
         double seconds = (double)elapsedTime / 1000000000.0;
         log.info(String.format("Took %d seconds", (int) seconds));
     }
+
+//    private void runOnRand(int num) {
+//        List<StockFA> randStocks;
+//        int processed = 0;
+//        int total = num;
+//        double totalTime = 0;
+//        do {
+//            long start = System.nanoTime();
+//
+//            randStocks = stockRetriever.getUniqueRandomStocks(BACK_TEST_BATCH_SIZE);
+//            analysis.analyzeStocks(randStocks);
+//
+//            long end = System.nanoTime();
+//            long elapsedTime = end - start;
+//            double seconds = (double)elapsedTime / 1000000000.0;
+//            totalTime += seconds;
+//            processed += randStocks.size();
+//            double percentage = processed * 100.0 / total;
+//            log.info(String.format("Processed %d/%d %.2f%% took %.2f sec. Total %.2f",
+//                    processed, total, percentage, seconds, totalTime));
+//        } while(!randStocks.isEmpty() && processed < num);
+//    }
 
 //    private void performBackTest() {
 //        backTestAll();
@@ -117,25 +145,5 @@ public class ServiceMain implements Runnable {
 //        } while(!randStocks.isEmpty());
 //    }
 //
-//    private void backTestNum(int num) {
-//        List<StockFA> randStocks;
-//        int processed = 0;
-//        int total = num;
-//        double totalTime = 0;
-//        do {
-//            long start = System.nanoTime();
-//
-//            randStocks = stockRetriever.getUniqueRandomStocks(BACK_TEST_BATCH_SIZE);
-//            analysis.analyzeStocks(randStocks);
-//
-//            long end = System.nanoTime();
-//            long elapsedTime = end - start;
-//            double seconds = (double)elapsedTime / 1000000000.0;
-//            totalTime += seconds;
-//            processed += randStocks.size();
-//            double percentage = processed * 100.0 / total;
-//            log.info(String.format("Processed %d/%d %.2f%% took %.2f sec. Total %.2f",
-//                    processed, total, percentage, seconds, totalTime));
-//        } while(!randStocks.isEmpty() && processed < num);
-//    }
+
 }

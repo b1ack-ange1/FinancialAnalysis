@@ -116,6 +116,9 @@ public class AnalysisTools {
         return bd.doubleValue();
     }
 
+    /**
+     * Given a list of stock prices, return the sublist between start and end dates.
+     */
     public static List<StockPrice> getValidStockPrices(List<StockPrice> allPrices, DateTime start, DateTime end) {
         List<StockPrice> valid = new ArrayList<>();
         for(StockPrice sp : allPrices) {

@@ -1,6 +1,5 @@
 package com.financialanalysis.store;
 
-import com.financialanalysis.data.Symbol;
 import com.financialanalysis.graphing.StockChart;
 import lombok.SneakyThrows;
 import org.jfree.chart.ChartUtilities;
@@ -35,7 +34,7 @@ public class ReportStore {
      * var/charts/<date>/<chart-name>
      */
     @SneakyThrows
-    public void save(Symbol symbol, List<StockChart> charts, DateTime dateTime) {
+    public void save(List<StockChart> charts, DateTime dateTime) {
         String date = dateTime.toString().split("T")[0];
         Path path = Paths.get(getReportStoreDir() + date);
         Files.createDirectories(path);

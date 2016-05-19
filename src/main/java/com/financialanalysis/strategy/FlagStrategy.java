@@ -41,18 +41,6 @@ import static com.financialanalysis.analysis.AnalysisTools.round;
 
 @Log4j
 public class FlagStrategy extends AbstractStrategy {
-    private final static int DEFAULT_FAST_PERIOD = 12;
-    private final static int DEFAULT_SLOW_PERIOD = 26;
-    private final static int DEFAULT_SIGNAL_PERIOD = 9;
-
-    private static final int DEFAULT_LONG_TREND_LEN = 60;
-    private static final double DEFAULT_LONG_TREND_SLOPE_THRESHOLD = 0.05;
-    private static final double DEFAULT_LONG_TREND_RSQUARE_THRESHOLD = 0.8;
-    private static final int DEFAULT_TREND_LEN = 30;
-    private static final double DEFAULT_TREND_BOT_SLOPE_THRESHOLD = 0.1;
-    private static final double DEFAULT_TREND_TOP_SLOPE_THRESHOLD = 0.04;
-    private static final double DEFAULT_TREND_RSQUARE_THRESHOLD = 0.9;
-
     private static final int MIN_FLAG_TOP_LEN = 5;
     private static final int MAX_FLAG_TOP_LEN = 30;
     private static final int MIN_FLAG_POLE_LEN = 5;
@@ -77,81 +65,49 @@ public class FlagStrategy extends AbstractStrategy {
     @Override
     @SneakyThrows
     public StrategyOutput runStrategy(StrategyInput input) {
-        Map<Symbol, Account> accounts = new HashMap<>();
-        Map<Symbol, List<StockChart>> charts = new HashMap<>();
+        StockFA stock = input.getStock();
 
-        for(StockFA stock : input.getStocks()) {
-            log.info("Running " + stock.getSymbol().getSymbol());
-            validStockPrice = getValidStockPrices(stock.getHistory(), input.getStartDate(), input.getEndDate());
-            if(validStockPrice.isEmpty()) continue;
-
-            closingPrices = getClosingPrices(validStockPrice);
-            openPrices = getOpenPrices(validStockPrice);
-            lowPrices = getLowPrices(validStockPrice);
-            highPrices = getHighPrices(validStockPrice);
-            volume = getVolume(validStockPrice);
-            dates = getDates(validStockPrice);
-            sma = sma(closingPrices, 100);
-
-            if(closingPrices.length < 120) {
-                continue;
-            }
-
-//            AnalysisFunctionResult pvoResult = pvo(volume, DEFAULT_FAST_PERIOD, DEFAULT_SLOW_PERIOD, DEFAULT_SIGNAL_PERIOD);
-//            pvo = pvoResult.getPvo();
-//            pvoSignal = pvoResult.getPvoSignal();
-
-            Account runAccount = Account.createDefaultAccount();
-            runAccount.setSymbol(stock.getSymbol());
-
-            PatternParameters params = new PatternParameters();
-            params.setLongTrendSlopeThreshold(0.0);
-            params.setLongTrendRSquareThreshold(0.8);
-            params.setTrendBotSlopeThresholdLower(-1.0);
-            params.setTrendBotSlopeThresholdHigher(0.0);
-            params.setTrendTopSlopeThresholdLower(-1.0);
-            params.setTrendTopSlopeThresholdHigher(0.0);
-            params.setTopBotSlopeDifferenceThreshold(0.03);
-            params.setTrendRSquareThreshold(0.8);
-            params.setNumTopDataPoints(3);
-            params.setNumBotDataPoints(2);
-
-            List<Flag> flagPatterns = findFlagPatterns(params, stock);
-            runAccount = determineLongPositions(flagPatterns, runAccount, stock);
-            boolean reportStock = false;
-            for(Action action : runAccount.getActivity()) {
-                if(action.getAction().equalsIgnoreCase("buy") && action.getDate().isAfter(DateTimeUtils.getToday().minusDays(3))) {
-                    log.info("Found a buy signal");
-                    reportStock = true;
-                }
-            }
-
-            if(flagPatterns.size() > 0 && reportStock) {
-                List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
-                charts.put(stock.getSymbol(), flagCharts);
-            }
-
-
-            accounts.put(stock.getSymbol(), runAccount);
+        validStockPrice = getValidStockPrices(stock.getHistory(), input.getStartDate(), input.getEndDate());
+        if(validStockPrice.isEmpty() || validStockPrice.size() < 120) {
+            return new StrategyOutput(Account.createDefaultAccount(), new ArrayList<>(), "Flag");
         }
 
-        log.info(charts.keySet().size() + " stocks have flags");
-        StrategyOutput output = new StrategyOutput(accounts, charts, "Flag");
-        return output;
+        closingPrices = getClosingPrices(validStockPrice);
+        openPrices = getOpenPrices(validStockPrice);
+        lowPrices = getLowPrices(validStockPrice);
+        highPrices = getHighPrices(validStockPrice);
+        volume = getVolume(validStockPrice);
+        dates = getDates(validStockPrice);
+        sma = sma(closingPrices, 100);
+
+        // Find the flags
+        List<Flag> flagPatterns = findFlagPatterns(stock);
+
+        // Given these flags, buy and sell on them
+        Account runAccount = determineLongPositions(flagPatterns, stock);
+
+        // If this stock generated a buy signal, then lets report it
+        if(runAccount.getActivity().size() > 0) {
+            List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
+            log.info("Found " + runAccount.getActivity().size() + " transactions for " + stock.getSymbol());
+            return new StrategyOutput(runAccount, flagCharts, "Flag");
+        }
+
+        return new StrategyOutput(Account.createDefaultAccount(), new ArrayList<>(), "Flag");
     }
 
     @SneakyThrows
-    private List<Flag> findFlagPatterns(PatternParameters params, StockFA stock) {
-        double longTrendSlopeThreshold = params.getLongTrendSlopeThreshold();
-        double longTrendRSquareThreshold = params.getLongTrendRSquareThreshold();
-        double trendBotSlopeThresholdLower = params.getTrendBotSlopeThresholdLower();
-        double trendBotSlopeThresholdHigher = params.getTrendBotSlopeThresholdHigher();
-        double trendTopSlopeThresholdLower = params.getTrendTopSlopeThresholdLower();
-        double trendTopSlopeThresholdHigher = params.getTrendTopSlopeThresholdHigher();
-        double trendRSquareThreshold = params.getTrendRSquareThreshold();
-        double topBotSlopeDifferenceThreshold = params.getTopBotSlopeDifferenceThreshold();
-        int numTopDataPoints = params.getNumTopDataPoints();
-        int numBotDataPoints = params.getNumBotDataPoints();
+    private List<Flag> findFlagPatterns( StockFA stock) {
+        double longTrendSlopeThreshold = 0.0;
+        double longTrendRSquareThreshold = 0.8;
+        double trendBotSlopeThresholdLower = -1.0;
+        double trendBotSlopeThresholdHigher = 0.0;
+        double trendTopSlopeThresholdLower = -1.0;
+        double trendTopSlopeThresholdHigher = 0.0;
+        double trendRSquareThreshold = 0.8;
+        double topBotSlopeDifferenceThreshold = 0.03;
+        int numTopDataPoints = 3;
+        int numBotDataPoints = 2;
 
         List<Flag> flagPatterns = new ArrayList<>();
         for(int i = closingPrices.length - 1; i >= 0 && i >= MIN_DATA_POINTS; i--) {
@@ -355,7 +311,9 @@ public class FlagStrategy extends AbstractStrategy {
     }
 
 
-    private Account determineLongPositions(List<Flag> flags, Account runAccount, StockFA stock) {
+    private Account determineLongPositions(List<Flag> flags, StockFA stock) {
+        Account runAccount = Account.createDefaultAccount();
+        runAccount.setSymbol(stock.getSymbol());
         for(Flag flag : flags) {
             DateTime triggerDay = flag.getTriggerDateTime();
             int triggerIndex = dates.indexOf(triggerDay);
@@ -365,20 +323,20 @@ public class FlagStrategy extends AbstractStrategy {
             double lastBuyPrice = -1.0;
             boolean bought = false;
 
-            for(int i = triggerIndex; i < closingPrices.length; i++) {
+            for (int i = triggerIndex; i < closingPrices.length; i++) {
                 // Check if we are still within period where it is okay to buy
-                if(i <= triggerIndex + FLAG_LOOK_AHEAD_DAYS) {
+                if (i <= triggerIndex + FLAG_LOOK_AHEAD_DAYS) {
                     // If there was more than 5% previous gap up, then don't buy
-                    double gapP = (openPrices[i] / closingPrices[i-1]) - 1;
+                    double gapP = (openPrices[i] / closingPrices[i - 1]) - 1;
                     boolean gapIsOkay = false;
-                    if(gapP <= 0.05) {
+                    if (gapP <= 0.05) {
                         gapIsOkay = true;
                     }
 
                     double projectedLinePrice = flag.getProjectPriceLine().getYForX((double) i);
 
                     // If we see a buy signal, automatically buy
-                    if(closingPrices[i] > buySellPrice && closingPrices[i] > projectedLinePrice /*&& pvo[i] > pvoSignal[i]*/ && !bought && gapIsOkay) {
+                    if (closingPrices[i] > buySellPrice && closingPrices[i] > projectedLinePrice && !bought && gapIsOkay) {
                         runAccount.buyAll(closingPrices[i], dates.get(i), stock.getSymbol());
                         lastBuyPrice = closingPrices[i];
                         bought = true;
@@ -386,17 +344,17 @@ public class FlagStrategy extends AbstractStrategy {
                     }
                 }
 
-                if(openPrices[i] < lastBuyPrice) {
+                if (openPrices[i] < lastBuyPrice) {
                     runAccount.sellAll(openPrices[i], dates.get(i), stock.getSymbol());
                 }
 
-                if(openPrices[i] >= closingPrices[i] && closingPrices[i] < lastBuyPrice) {
+                if (openPrices[i] >= closingPrices[i] && closingPrices[i] < lastBuyPrice) {
                     runAccount.sellAll(lastBuyPrice, dates.get(i), stock.getSymbol());
                 }
 
                 // If there are any profitable sales, sell
                 // or if the closing price drops below the projected price line, sell
-                if(closingPrices[i] > targetSellPrice || closingPrices[i] < flag.getProjectPriceLine().getYForX((double) i)) {
+                if (closingPrices[i] > targetSellPrice || closingPrices[i] < flag.getProjectPriceLine().getYForX((double) i)) {
                     runAccount.sellAll(closingPrices[i], dates.get(i), stock.getSymbol());
                     bought = false;
                 }
@@ -406,17 +364,16 @@ public class FlagStrategy extends AbstractStrategy {
             stockChart.addHorizontalLine(targetSellPrice, "Target-" + ((int) (targetSellPrice * 100.0)) / 100);
             stockChart.addXYLine(dates, sma, "100-SMA");
 
-            if(!runAccount.getActivity().isEmpty()) {
+            if (!runAccount.getActivity().isEmpty()) {
 //                stockChart.setGainLoss(String.format("[%.2f%%]", runAccount.getPercentageGainLoss()));
 //                stockChart.setNumDays(String.format("%d", runAccount.getDayBetweenFirstAndLastAction()));
 
-                for(Action action : runAccount.getActivity()) {
+                for (Action action : runAccount.getActivity()) {
                     int actionIndex = dates.indexOf(action.getDate());
                     int price = (int) (action.getPrice() * 100.0);
                     stockChart.addVerticalLine(dates.get(actionIndex), String.format("%.2f", price / 100.0), action);
                 }
             }
-
         }
         return runAccount;
     }
@@ -451,23 +408,22 @@ public class FlagStrategy extends AbstractStrategy {
             return flagTop.getEnd();
         }
     }
-
-    @Data
-    private class PatternParameters {
-        private double longTrendSlopeThreshold;
-        private double longTrendRSquareThreshold;
-        private double trendBotSlopeThresholdLower;
-        private double trendBotSlopeThresholdHigher;
-        private double trendTopSlopeThresholdLower;
-        private double trendTopSlopeThresholdHigher;
-        private double trendRSquareThreshold;
-        private double topBotSlopeDifferenceThreshold;
-        private int numTopDataPoints;
-        private int numBotDataPoints;
-
-        public String getPrettyJson() {
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            return gson.toJson(this);
-        }
-    }
 }
+
+/*
+        PatternParameters params = new PatternParameters();
+        params.setLongTrendSlopeThreshold(0.0);
+        params.setLongTrendRSquareThreshold(0.8);
+        params.setTrendBotSlopeThresholdLower(-1.0);
+        params.setTrendBotSlopeThresholdHigher(0.0);
+        params.setTrendTopSlopeThresholdLower(-1.0);
+        params.setTrendTopSlopeThresholdHigher(0.0);
+        params.setTopBotSlopeDifferenceThreshold(0.03);
+        params.setTrendRSquareThreshold(0.8);
+        params.setNumTopDataPoints(3);
+        params.setNumBotDataPoints(2);
+
+        AnalysisFunctionResult pvoResult = pvo(volume, DEFAULT_FAST_PERIOD, DEFAULT_SLOW_PERIOD, DEFAULT_SIGNAL_PERIOD);
+        pvo = pvoResult.getPvo();
+        pvoSignal = pvoResult.getPvoSignal();
+ */

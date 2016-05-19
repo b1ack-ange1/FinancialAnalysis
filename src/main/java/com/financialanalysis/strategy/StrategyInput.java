@@ -9,8 +9,7 @@ import java.util.Map;
 
 @Data
 public class StrategyInput {
-    private final List<StockFA> stocks;
+    private final StockFA stock;
     private final DateTime startDate;
     private final DateTime endDate;
-    private final Map<String, String> params;
 }

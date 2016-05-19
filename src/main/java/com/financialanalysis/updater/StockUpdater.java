@@ -57,7 +57,9 @@ public class StockUpdater {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
         List<List<Symbol>> lists = Lists.partition(allSymbols, BATCH_SIZE);
-        for(List<Symbol> list : lists) executorService.execute(() -> updateStocks(list));
+        for(List<Symbol> list : lists) {
+            executorService.execute(() -> updateStocks(list));
+        }
 
         // Wait for everything to be finished
         log.info("Waiting for update to finish.");

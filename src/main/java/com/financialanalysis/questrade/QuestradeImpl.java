@@ -51,7 +51,7 @@ public class QuestradeImpl implements Questrade {
 
     static {
         createAuthStore();
-        authenticate();
+        //authenticate();
     }
 
     @SneakyThrows

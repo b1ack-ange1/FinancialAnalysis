@@ -118,7 +118,7 @@ public class Account {
         builder.append(String.format("Percentage Gain/Loss: %8.2f%%\n", percentageGainLoss));
         builder.append(String.format("Number Buys         : %8d\n", numBuys));
         builder.append(String.format("Number Sells        : %8d\n", numSells));
-        builder.append(String.format("Number Trader       : %8d\n", numTrades));
+        builder.append(String.format("Number Trades       : %8d\n", numTrades));
         builder.append(String.format("Commission Paid     : %8d\n", numTrades *DEFAULT_COMMISSION_FEE));
         builder.append(String.format("Symbol              : %8s\n", symbol));
         return builder.toString();

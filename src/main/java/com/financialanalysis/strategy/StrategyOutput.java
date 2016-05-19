@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Data
 public class StrategyOutput {
-    private final Map<Symbol, Account> accounts;
-    private final Map<Symbol, List<StockChart>> charts;
+    private final Account account;
+    private final List<StockChart> charts;
     private final String strategyName;
 }

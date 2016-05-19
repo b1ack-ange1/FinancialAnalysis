@@ -1,19 +1,16 @@
 package com.financialanalysis.reports;
 
-import com.financialanalysis.data.Symbol;
-import com.financialanalysis.graphing.StockChart;
 import com.financialanalysis.store.ReportStore;
-import com.financialanalysis.strategy.AbstractStrategy;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.workflow.StrategyRunner;
 import com.google.inject.Inject;
+import lombok.extern.log4j.Log4j;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
+@Log4j
 public class Reporter {
     private final StrategyRunner strategyRunner;
     private final ReportStore reportStore;
@@ -24,26 +21,15 @@ public class Reporter {
         this.reportStore = reportStore;
     }
 
-    public void generateReports() {
+    public void generateReports(List<StrategyOutput> allResults) {
         DateTime currentDate = DateTime.now(DateTimeZone.forID("America/Toronto"));
-        Map<AbstractStrategy, List<StrategyOutput>> allResults = strategyRunner.getAllResults();
-        Set<AbstractStrategy> strategies = allResults.keySet();
 
-        for(AbstractStrategy strategy : strategies) {
-            List<StrategyOutput> outputs = allResults.get(strategy);
-            if(outputs != null && !outputs.isEmpty()) {
-
-                for(StrategyOutput output : outputs) {
-                    Set<Symbol> symbols = output.getCharts().keySet();
-                    if(symbols != null && !symbols.isEmpty()) {
-
-                        for(Symbol symbol : symbols) {
-                            List<StockChart> charts = output.getCharts().get(symbol);
-                            reportStore.save(symbol, charts, currentDate);
-                        }
-                    }
-                }
+        allResults.forEach(output -> {
+            if(!output.getAccount().getActivity().isEmpty()) {
+                log.info(output.getAccount().getSummary());
+                output.getCharts().forEach(chart -> chart.render());
+//            reportStore.save(r.getCharts(), currentDate);
             }
-        }
+        });
     }
 }
