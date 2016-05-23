@@ -1,7 +1,10 @@
 package com.financialanalysis.store;
 
+import com.financialanalysis.common.DateTimeUtils;
 import com.financialanalysis.graphing.StockChart;
+import com.financialanalysis.reports.Report;
 import lombok.SneakyThrows;
+import org.apache.commons.io.FileUtils;
 import org.jfree.chart.ChartUtilities;
 import org.joda.time.DateTime;
 
@@ -34,12 +37,19 @@ public class ReportStore {
      * var/charts/<date>/<chart-name>
      */
     @SneakyThrows
-    public void save(List<StockChart> charts, DateTime dateTime) {
-        String date = dateTime.toString().split("T")[0];
+    public void save(List<Report> reports) {
+        DateTime today = DateTimeUtils.getToday();
+        String date = today.toString().split("T")[0];
         Path path = Paths.get(getReportStoreDir() + date);
+
+        if(Files.exists(path)) {
+            FileUtils.deleteDirectory(path.toFile());
+        }
+
         Files.createDirectories(path);
 
-        for(StockChart chart : charts) {
+        for(Report report : reports) {
+            StockChart chart = report.getStockChart();
             File file = new File(getReportStoreDir() + date + "/" + chart.getTitle().replaceAll(" ", "_") + ".jpg");
             ChartUtilities.saveChartAsJPEG(file, 1.0f, chart.getChart(), 1920, 1080);
         }

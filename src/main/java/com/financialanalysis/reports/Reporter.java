@@ -1,13 +1,12 @@
 package com.financialanalysis.reports;
 
 import com.financialanalysis.data.Account;
+import com.financialanalysis.graphing.StockChart;
 import com.financialanalysis.store.ReportStore;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.workflow.StrategyRunner;
 import com.google.inject.Inject;
 import lombok.extern.log4j.Log4j;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,8 +22,11 @@ public class Reporter {
         this.reportStore = reportStore;
     }
 
+    public List<Report> generateReports(List<StrategyOutput> allResults) {
+        return allResults.stream().map(s -> s.getCharts()).flatMap(c -> c.stream()).map(c -> new Report(c)).collect(Collectors.toList());
+    }
+
     public void generateIndividualAccountSummary(List<StrategyOutput> allResults) {
-        DateTime currentDate = DateTime.now(DateTimeZone.forID("America/Toronto"));
 
         allResults.forEach(output -> {
             log.info(output.getAccount().getSummary());
