@@ -33,7 +33,9 @@ public class StrategyRunner {
     private final SymbolStore symbolStore;
     private final StockStore stockStore;
 
-    private final DateTime start = DEFAULT_START_DATE;
+//    private final DateTime start = DEFAULT_START_DATE;
+    private final DateTime start = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+
     private final DateTime end = DateTime.now(DateTimeZone.forID("America/Toronto"));
     private final int MAX_BATCH_SIZE = 100;
 
@@ -51,14 +53,16 @@ public class StrategyRunner {
      */
     @SneakyThrows
     public List<StrategyOutput> runOnStocks(List<StockFA> stocks) {
-        log.info("Beginning to run all strategies.");
         ExecutorService executorService = Executors.newFixedThreadPool(10);
 
         List<Future<StrategyOutput>> futures = new LinkedList<>();
         List<StrategyOutput> results = new LinkedList<>();
 
         stocks.forEach(s -> {
-            results.add(runStock(s));
+            StrategyOutput output = runStock(s);
+            if(!output.isEmpty()) {
+                results.add(output);
+            }
 //          futures.add(executorService.submit(() -> runStock(s)));
         });
 

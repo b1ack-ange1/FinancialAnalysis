@@ -7,60 +7,31 @@ import com.financialanalysis.store.SymbolStore;
 import com.google.inject.Inject;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class StockRetriever {
     private final StockStore stockStore;
-    private final StockUpdater stockUpdater;
-    private final SymbolStore symbolStore;
 
-    private List<Symbol> allSymbols;
-    private Map<String, Boolean> returnedStocks;
+    private List<Symbol> allSymbolsRandomized;
     private int lastIndex = -1;
 
     @Inject
     public StockRetriever(StockStore stockStore,
-                          StockUpdater stockUpdater,
                           SymbolStore symbolStore) {
         this.stockStore = stockStore;
-        this.stockUpdater = stockUpdater;
-        this.symbolStore = symbolStore;
-        allSymbols = symbolStore.load();
-        returnedStocks = new HashMap<>();
+        allSymbolsRandomized = symbolStore.load();
+        Collections.shuffle(allSymbolsRandomized, new Random(System.nanoTime()));
     }
 
     /**
-     * Will return locally stored stock if exists, if not
-     * then will pull from network and store locally and return it
+     * Will return locally stored stock if exists
      */
     public List<StockFA> getStocks(List<Symbol> symbols) {
-        List<StockFA> stockList = new ArrayList<>();
         Map<Symbol, StockFA> storedStocks = stockStore.load(symbols);
-        List<Symbol> missingSymbols = new ArrayList<>();
-
-        for(Symbol symbol : symbols) {
-            //If we have it stored, return it
-            if(storedStocks.containsKey(symbol)) {
-                stockList.add(storedStocks.get(symbol));
-
-            //If not then pull it and store it to stockStore
-            } else {
-                missingSymbols.add(symbol);
-            }
-        }
-
-        if(!missingSymbols.isEmpty()) {
-            // Add missing symbols to the store
-            stockUpdater.addStocksToStore(missingSymbols);
-
-            // Get them from the store
-            Map<Symbol, StockFA> newlyAdded = stockStore.load(missingSymbols);
-            stockList.addAll(newlyAdded.values());
-        }
-
-        return stockList;
+        return new ArrayList<>(storedStocks.values());
     }
 
     /**
@@ -76,8 +47,8 @@ public class StockRetriever {
         List<Symbol> symbols = new ArrayList<>();
 
         int tmp = lastIndex + 1;
-        for(int i = lastIndex + 1; i < allSymbols.size() && i < lastIndex + 1 + num; i++) {
-            symbols.add(allSymbols.get(i));
+        for(int i = lastIndex + 1; i < allSymbolsRandomized.size() && i < lastIndex + 1 + num; i++) {
+            symbols.add(allSymbolsRandomized.get(i));
             tmp = i;
         }
         lastIndex = tmp;
@@ -89,6 +60,6 @@ public class StockRetriever {
     }
 
     public int getNumAvailableStocks() {
-        return allSymbols.size();
+        return allSymbolsRandomized.size();
     }
 }

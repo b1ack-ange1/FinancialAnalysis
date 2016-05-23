@@ -3,6 +3,7 @@ package com.financialanalysis.graphing;
 import com.financialanalysis.data.Action;
 import com.financialanalysis.data.StockPrice;
 import lombok.Setter;
+import lombok.extern.log4j.Log4j;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -37,7 +38,8 @@ import static com.financialanalysis.analysis.AnalysisTools.getHighPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getLowPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
 
-public class StockChartCore /*extends ApplicationFrame*/ {
+@Log4j
+public class StockChartCore extends ApplicationFrame {
     private final String title;
 
     private List<Marker> domainMarkers = new ArrayList<>();
@@ -54,7 +56,7 @@ public class StockChartCore /*extends ApplicationFrame*/ {
     @Setter private String numDays = "";
 
     public StockChartCore(String title) {
-//        super(title);
+        super(title);
         this.title = title;
     }
 
@@ -114,6 +116,7 @@ public class StockChartCore /*extends ApplicationFrame*/ {
         OHLCSeries series = new OHLCSeries("Price");
         for(int i = 0; i < close.length; i++) {
             OHLCItem item = new OHLCItem(getDay(dates.get(i)), open[i], high[i], low[i], close[i]);
+            log.info(getDay(dates.get(i)) + " : " + i);
             series.add(item);
         }
 
@@ -262,12 +265,12 @@ public class StockChartCore /*extends ApplicationFrame*/ {
         NumberAxis range = (NumberAxis) plot.getRangeAxis();
         range.setRange(min, max);
 
-//        ChartPanel chartPanel = new ChartPanel(chart);
-//        chartPanel.setPreferredSize(new java.awt.Dimension(700, 470));
-//        setContentPane(chartPanel);
-//        pack();
-//        RefineryUtilities.centerFrameOnScreen(this);
-//        setVisible(true);
+        ChartPanel chartPanel = new ChartPanel(chart);
+        chartPanel.setPreferredSize(new java.awt.Dimension(700, 470));
+        setContentPane(chartPanel);
+        pack();
+        RefineryUtilities.centerFrameOnScreen(this);
+        setVisible(true);
     }
 
     public JFreeChart getChart() {

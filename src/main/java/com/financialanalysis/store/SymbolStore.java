@@ -27,7 +27,9 @@ public class SymbolStore {
     @SneakyThrows
     private static void createSymbolStore() {
         Path path = Paths.get(getSymbolStoreDir());
-        Files.createDirectories(path);
+        if(!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
     }
 
     private static String getSymbolStoreDir() {

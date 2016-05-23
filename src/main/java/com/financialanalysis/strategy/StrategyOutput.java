@@ -13,4 +13,8 @@ public class StrategyOutput {
     private final Account account;
     private final List<StockChart> charts;
     private final String strategyName;
+
+    public boolean isEmpty() {
+        return charts.isEmpty();
+    }
 }

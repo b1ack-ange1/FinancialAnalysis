@@ -29,7 +29,9 @@ public class StockStore {
     @SneakyThrows
     private static void createStockStore() {
         Path path = Paths.get(getStockStoreDir());
-        Files.createDirectories(path);
+        if(!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
     }
 
     private static String getStockStoreDir() {

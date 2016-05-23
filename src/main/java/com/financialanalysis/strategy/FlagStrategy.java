@@ -1,6 +1,5 @@
 package com.financialanalysis.strategy;
 
-import com.financialanalysis.common.DateTimeUtils;
 import com.financialanalysis.data.Action;
 import com.financialanalysis.data.StockFA;
 import com.financialanalysis.data.StockPrice;
@@ -12,7 +11,6 @@ import com.financialanalysis.graphing.Point;
 import com.financialanalysis.data.Account;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
@@ -89,7 +87,7 @@ public class FlagStrategy extends AbstractStrategy {
         // If this stock generated a buy signal, then lets report it
         if(runAccount.getActivity().size() > 0) {
             List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
-            log.info("Found " + runAccount.getActivity().size() + " transactions for " + stock.getSymbol());
+            log.info("Found " + runAccount.getActivity().size() + " transactions for " + stock.getSymbol() + ". " + runAccount.getPercentageGainLoss());
             return new StrategyOutput(runAccount, flagCharts, "Flag");
         }
 
@@ -97,7 +95,7 @@ public class FlagStrategy extends AbstractStrategy {
     }
 
     @SneakyThrows
-    private List<Flag> findFlagPatterns( StockFA stock) {
+    private List<Flag> findFlagPatterns(StockFA stock) {
         double longTrendSlopeThreshold = 0.0;
         double longTrendRSquareThreshold = 0.8;
         double trendBotSlopeThresholdLower = -1.0;
@@ -213,6 +211,7 @@ public class FlagStrategy extends AbstractStrategy {
                 );
                 stockChart.addVerticalLine(dates.get(i), "T ", null);
                 stockChart.addHorizontalLine(highsTrendLine.getYForX(i), "Buy/Sell");
+//                stockChart.render();
 
                 Flag flag = new Flag(
                         flagTop,
