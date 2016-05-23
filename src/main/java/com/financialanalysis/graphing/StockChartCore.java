@@ -7,9 +7,7 @@ import lombok.extern.log4j.Log4j;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
-import org.jfree.chart.axis.SegmentedTimeline;
 import org.jfree.chart.plot.Marker;
 import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
@@ -116,7 +114,6 @@ public class StockChartCore extends ApplicationFrame {
         OHLCSeries series = new OHLCSeries("Price");
         for(int i = 0; i < close.length; i++) {
             OHLCItem item = new OHLCItem(getDay(dates.get(i)), open[i], high[i], low[i], close[i]);
-            log.info(getDay(dates.get(i)) + " : " + i);
             series.add(item);
         }
 

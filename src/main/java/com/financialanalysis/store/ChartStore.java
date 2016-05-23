@@ -17,47 +17,58 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ReportStore {
+public class ChartStore {
+    private static String BACK_TEST = "backtest";
+
     static {
-        createReportStore();
+        createChartStore();
     }
 
     @SneakyThrows
-    private static void createReportStore() {
-        Path path = Paths.get(getReportStoreDir());
+    private static void createChartStore() {
+        Path path = Paths.get(getChartsStoreDir());
         Files.createDirectories(path);
     }
 
-    private static String getReportStoreDir() {
+    private static String getChartsStoreDir() {
         return "var/charts/";
     }
 
     /**
-     * Save to:
-     * var/charts/<date>/<chart-name>
+     * Save to var/charts/<date>/<chart-name>
      */
-    @SneakyThrows
     public void save(List<Report> reports) {
         DateTime today = DateTimeUtils.getToday();
         String date = today.toString().split("T")[0];
-        Path path = Paths.get(getReportStoreDir() + date);
+        Path path = Paths.get(getChartsStoreDir() + date);
+        save(path, reports, date);
+    }
 
+    /**
+     * Save to var/charts/backtest/<chart-name>
+     */
+    public void saveBackTestCharts(List<Report> reports) {
+        Path path = Paths.get(getChartsStoreDir() + BACK_TEST);
+        save(path, reports, BACK_TEST);
+    }
+
+    @SneakyThrows
+    private void save(Path path, List<Report> reports, String tag) {
         if(Files.exists(path)) {
             FileUtils.deleteDirectory(path.toFile());
         }
-
         Files.createDirectories(path);
 
         for(Report report : reports) {
             StockChart chart = report.getStockChart();
-            File file = new File(getReportStoreDir() + date + "/" + chart.getTitle().replaceAll(" ", "_") + ".jpg");
+            File file = new File(getChartsStoreDir() + tag + "/" + chart.getTitle().replaceAll(" ", "_") + ".jpg");
             ChartUtilities.saveChartAsJPEG(file, 1.0f, chart.getChart(), 1920, 1080);
         }
     }
 
     public List<File> loadFromDate(DateTime dateTime) {
         String date = dateTime.toString().split("T")[0];
-        Path path = Paths.get(getReportStoreDir() + date);
+        Path path = Paths.get(getChartsStoreDir() + date);
         File dir = path.toFile();
 
         if(!dir.exists()) {

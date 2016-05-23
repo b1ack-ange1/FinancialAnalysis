@@ -10,7 +10,6 @@ import com.financialanalysis.graphing.Line;
 import com.financialanalysis.graphing.Point;
 import com.financialanalysis.data.Account;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
 import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
@@ -19,7 +18,6 @@ import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,6 +34,7 @@ import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getValidStockPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getVolume;
 import static com.financialanalysis.analysis.AnalysisTools.round;
+import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
 public class FlagStrategy extends AbstractStrategy {
@@ -87,7 +86,8 @@ public class FlagStrategy extends AbstractStrategy {
         // If this stock generated a buy signal, then lets report it
         if(runAccount.getActivity().size() > 0) {
             List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
-            log.info("Found " + runAccount.getActivity().size() + " transactions for " + stock.getSymbol() + ". " + runAccount.getPercentageGainLoss());
+            log.info(stock.getSymbol().getSymbol() + " found " + runAccount.getActivity().size() + " transactions.");
+
             return new StrategyOutput(runAccount, flagCharts, "Flag");
         }
 

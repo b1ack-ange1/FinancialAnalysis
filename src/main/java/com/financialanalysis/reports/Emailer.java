@@ -1,7 +1,7 @@
 package com.financialanalysis.reports;
 
 import com.financialanalysis.data.User;
-import com.financialanalysis.store.ReportStore;
+import com.financialanalysis.store.ChartStore;
 import com.financialanalysis.store.UserStore;
 import com.google.inject.Inject;
 import lombok.SneakyThrows;
@@ -29,14 +29,14 @@ import java.util.Properties;
 
 @Log4j
 public class Emailer {
-    private final ReportStore reportStore;
+    private final ChartStore chartStore;
     private final UserStore userStore;
 
     private final static int MAX_CHARTS = 50;
 
     @Inject
-    public Emailer(ReportStore reportStore, UserStore userStore) {
-        this.reportStore = reportStore;
+    public Emailer(ChartStore chartStore, UserStore userStore) {
+        this.chartStore = chartStore;
         this.userStore = userStore;
     }
 
@@ -72,7 +72,7 @@ public class Emailer {
             }
             message.setSubject("Daily Stock Update");
 
-            List<File> reports = reportStore.loadFromDate(DateTime.now(DateTimeZone.forID("America/Toronto")));
+            List<File> reports = chartStore.loadFromDate(DateTime.now(DateTimeZone.forID("America/Toronto")));
 
             if(reports.size() > MAX_CHARTS) {
                 message.setText("Found too many reports to email.");

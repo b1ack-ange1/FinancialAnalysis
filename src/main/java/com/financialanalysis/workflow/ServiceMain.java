@@ -1,35 +1,29 @@
 package com.financialanalysis.workflow;
 
 import com.financialanalysis.data.StockFA;
-import com.financialanalysis.data.StockPrice;
 import com.financialanalysis.data.Symbol;
 import com.financialanalysis.questrade.Questrade;
 import com.financialanalysis.reports.Emailer;
 import com.financialanalysis.reports.Report;
 import com.financialanalysis.reports.Reporter;
-import com.financialanalysis.store.ReportStore;
+import com.financialanalysis.store.ChartStore;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
-import com.financialanalysis.strategy.AbstractStrategy;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.updater.StockMerger;
 import com.financialanalysis.updater.StockPuller;
 import com.financialanalysis.updater.StockRetriever;
 import com.financialanalysis.updater.StockUpdater;
 import com.financialanalysis.updater.SymbolUpdater;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
-import org.jfree.data.time.Day;
-import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.financialanalysis.workflow.Main.*;
 
@@ -45,7 +39,7 @@ public class ServiceMain implements Runnable {
     private final SymbolUpdater symbolUpdater;
     private final StrategyRunner strategyRunner;
     private final Reporter reporter;
-    private final ReportStore reportStore;
+    private final ChartStore chartStore;
     private final SymbolStore symbolStore;
     private final Emailer emailer;
 
@@ -60,7 +54,7 @@ public class ServiceMain implements Runnable {
                        SymbolUpdater symbolUpdater,
                        StrategyRunner strategyRunner,
                        Reporter reporter,
-                       ReportStore reportStore,
+                       ChartStore chartStore,
                        SymbolStore symbolStore,
                        Emailer emailer) {
         this.analysis = analysis;
@@ -73,7 +67,7 @@ public class ServiceMain implements Runnable {
         this.symbolUpdater = symbolUpdater;
         this.strategyRunner = strategyRunner;
         this.reporter = reporter;
-        this.reportStore = reportStore;
+        this.chartStore = chartStore;
         this.symbolStore = symbolStore;
         this.emailer = emailer;
     }
@@ -83,7 +77,7 @@ public class ServiceMain implements Runnable {
     public void run() {
         log.info("Starting ServiceMain");
         long start = System.nanoTime();
-        
+
         if(updateSymbols) {
             symbolUpdater.refresh();
         }
@@ -95,15 +89,17 @@ public class ServiceMain implements Runnable {
         if(runStrategies) {
             List<StrategyOutput> allResults = strategyRunner.run();
             List<Report> reports = reporter.generateReports(allResults);
-            reportStore.save(reports);
+            chartStore.save(reports);
 //            emailer.emailReports(reports);
         }
 
         if(backtest && !runStrategies) {
-            if(backtestNum == 0) {
-                backtestAll();
-            } else {
+            if(!Strings.isNullOrEmpty(backtestStocks)) {
+                backTestOn(backtestStocks);
+            } else if(backtestNum > 0) {
                 backtestUntil(backtestNum);
+            } else {
+                backtestAll();
             }
         }
 
@@ -115,30 +111,37 @@ public class ServiceMain implements Runnable {
     public void backtestAll() {
         List<StrategyOutput> outputs = strategyRunner.run();
         reporter.generateAverageAccountSummary(outputs);
-
     }
 
     public void backtestUntil(int numFound) {
-        List<StrategyOutput> outputs = new ArrayList<>();
-
+        List<StrategyOutput> outputs = Lists.newArrayList();
+        StringBuffer buf = new StringBuffer();
         do {
-            outputs.addAll(strategyRunner.runOnStocks(stockRetriever.getUniqueRandomStocks(1)));
+            List<StockFA> stock = stockRetriever.getUniqueRandomStocks(1);
+            buf.append(stock.get(0) + " ");
+            outputs.addAll(strategyRunner.runOnStocks(stock));
         } while(outputs.size() < numFound);
 
+        List<Report> reports = reporter.generateReports(outputs);
+        chartStore.saveBackTestCharts(reports);
+        reporter.generateIndividualAccountSummary(outputs);
+        reporter.generateAverageAccountSummary(outputs);
+        log.info(buf.toString());
+    }
+
+    public void backTestOn(String commaSeperatedSymbols) {
+        List<String> inputSymbols = Lists.newArrayList(commaSeperatedSymbols.split(","));
+        List<Symbol> symbols = symbolStore.load(inputSymbols);
+
+        List<StockFA> stocks = new ArrayList<>(stockStore.load(symbols).values());
+        List<StrategyOutput> outputs = Lists.newArrayList();
+        outputs.addAll(strategyRunner.runOnStocks(stocks));
+
+        List<Report> reports = reporter.generateReports(outputs);
+        chartStore.saveBackTestCharts(reports);
         reporter.generateIndividualAccountSummary(outputs);
         reporter.generateAverageAccountSummary(outputs);
     }
-
-//    @SneakyThrows
-//    public void runOn() {
-//        List<StrategyOutput> outputs = new ArrayList<>();
-//        List<Symbol> symbols = symbolStore.load(Arrays.asList("UWHR"));
-//        List<StockFA> stocks = new ArrayList<>(stockStore.load(symbols).values());
-//        outputs.addAll(strategyRunner.runOnStocks(stocks));
-//
-//        reporter.generateIndividualAccountSummary(outputs);
-//        reporter.generateAverageAccountSummary(outputs);
-//    }
 
 //    private void runOnRand(int num) {
 //        List<StockFA> randStocks;

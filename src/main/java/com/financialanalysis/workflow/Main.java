@@ -9,20 +9,24 @@ import lombok.extern.log4j.Log4j;
 
 @Log4j
 public class Main {
-    @Parameter(names={"--backtest", "-b"})
+    @Parameter(names={"--backtest", "-b"}, description = "Run a back test.")
     public static boolean backtest = false;
 
-    @Parameter(names={"--backtestNum", "-n"})
+    @Parameter(names={"--backtestNum", "-n"}, description = "Run a back test until be get this many successful signals.")
     public static int backtestNum;
 
-    @Parameter(names={"--updateSymbols", "-usym"})
+    @Parameter(names={"--backtestStock", "-bs"}, description = "Run a back test on this comma seperated list of stocks.")
+    public static String backtestStocks;
+
+    @Parameter(names={"--updateSymbols", "-usym"}, description = "Update the stored symbols from Questrade.")
     public static boolean updateSymbols;
 
-    @Parameter(names={"--updateStocks", "-usto"})
+    @Parameter(names={"--updateStocks", "-usto"}, description = "Update the stored stock date.")
     public static boolean updateStocks;
 
-    @Parameter(names={"--runStrategies", "-rs"})
+    @Parameter(names={"--runStrategies", "-rs"}, description = "Run strategies for today.")
     public static boolean runStrategies;
+
 
     public static void main(String[] args) {
         Main main = new Main();
