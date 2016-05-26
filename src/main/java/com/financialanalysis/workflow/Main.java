@@ -30,6 +30,9 @@ public class Main {
     @Parameter(names={"--chart", "-c"}, description = "Save charts from run.")
     public static boolean saveCharts;
 
+    @Parameter(names={"--chart", "-c"}, description = "Show percentiles.")
+    public static boolean percentiles;
+
     public static void main(String[] args) {
         Main main = new Main();
         new JCommander(main, args);

@@ -131,9 +131,14 @@ public class ServiceMain implements Runnable {
         } while(outputs.size() < numFound);
 
         List<Report> reports = reporter.generateReports(outputs);
+
         if(saveCharts) {
             chartStore.saveBackTestCharts(reports);
         }
+        if(percentiles) {
+            reporter.generatePercentilesChart(outputs);
+        }
+
         reporter.generateIndividualAccountSummary(outputs);
         reporter.generateAverageAccountSummary(outputs);
         log.info(buf.toString());
@@ -148,14 +153,19 @@ public class ServiceMain implements Runnable {
         outputs.addAll(strategyRunner.runOnStocks(stocks));
 
         List<Report> reports = reporter.generateReports(outputs);
+
         if(saveCharts) {
             chartStore.saveBackTestCharts(reports);
         }
-//        reporter.generateIndividualAccountSummary(outputs);
+        if(percentiles) {
+            reporter.generatePercentilesChart(outputs);
+        }
+
+        reporter.generateIndividualAccountSummary(outputs, 2.0);
         reporter.generateAverageAccountSummary(outputs);
 
         List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
         log.info(String.join(",", symbolNames));
-        log.info(symbolNames.size());
+        log.info("Stocks Num: " + symbolNames.size());
     }
 }

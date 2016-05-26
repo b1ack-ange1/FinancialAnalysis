@@ -179,10 +179,7 @@ public class FlagStrategy extends AbstractStrategy {
             boolean patternTrend = accuracy && trendSlope && numData && flagLowest;
 
             // Make sure there have been movement in the closing for the last 3 days
-            boolean sufficientMovement = (closingPrices[i] != closingPrices[i-1]) &&
-                                         (closingPrices[i] != closingPrices[i-2]) &&
-                                         (closingPrices[i] != closingPrices[i-3]);
-
+            boolean sufficientMovement = determineIfSufficientMovement(i, startOfFlagPole, stock.getSymbol());
 
             if(patternTrend && longTrend && profit && sufficientMovement) {
                 String info = String.format("%s_%s", stock.getSymbol(), dates.get(i).toString().split("T")[0]);
@@ -239,6 +236,33 @@ public class FlagStrategy extends AbstractStrategy {
         }
         // Reverse the list so it's in chronological order
         return Lists.reverse(flagPatterns);
+    }
+
+    /**
+     * Look back until the start of the flag pole on a rolling 3 day window
+     * 1) Closing prices must not be all the same
+     * 2) Open and closing prices must be different
+     * 3) ?? Volume must be greater than ??
+     * @return
+     */
+    private boolean determineIfSufficientMovement(int startIndex, int startOfFlagPole, Symbol symbol) {
+        int inSufficientMovementCount = 0;
+        int maxInsufficientCount = 3;
+        for(int i = startIndex; i > startOfFlagPole; i--) {
+            boolean inSufficientMovement1 = closingPrices[i] == closingPrices[i- 1];
+//            boolean inSufficientMovement2 = closingPrices[i] == openPrices[i];
+            boolean inSufficientMovement2 = lowPrices[i] == highPrices[i];
+
+            if(inSufficientMovement1 || inSufficientMovement2) {
+                inSufficientMovementCount++;
+            }
+
+        }
+        if(inSufficientMovementCount > maxInsufficientCount) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     /**

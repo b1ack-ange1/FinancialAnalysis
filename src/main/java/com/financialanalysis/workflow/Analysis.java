@@ -173,7 +173,7 @@ public class Analysis {
         for(int i = 0; i < percentile.length; i++) {
             if(percentile[i] == 0.0) continue;
             String format = String.format("Percentile: %3d%% %3.2f%% %3d/%d", i - Math.abs(min), percentile[i], freq[i], accounts.size());
-            log.info(format);
+            //log.info(format);
         }
 
         double[] x = new double[numPoints];

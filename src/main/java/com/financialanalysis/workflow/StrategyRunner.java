@@ -39,8 +39,6 @@ public class StrategyRunner {
     private final DateTime end = DateTime.now(DateTimeZone.forID("America/Toronto"));
     private final int MAX_BATCH_SIZE = 100;
 
-    private List<StrategyOutput> allResults = new LinkedList<>();
-
     @Inject
     public StrategyRunner(FlagStrategy flagStrategy, SymbolStore symbolStore, StockStore stockStore) {
         this.flagStrategy = flagStrategy;
@@ -53,6 +51,7 @@ public class StrategyRunner {
      */
     @SneakyThrows
     public List<StrategyOutput> runOnStocks(List<StockFA> stocks) {
+        log.info("Beginning to run on select stocks.");
         ExecutorService executorService = Executors.newFixedThreadPool(10);
 
         List<Future<StrategyOutput>> futures = new LinkedList<>();
@@ -73,13 +72,12 @@ public class StrategyRunner {
         return results;
     }
 
-
     /**
      * Run's all strategies on all stocks
      */
     @SneakyThrows
     public List<StrategyOutput> run() {
-        log.info("Beginning to run all strategies.");
+        log.info("Beginning to run all stocks.");
         List<Symbol> allSymbols = symbolStore.load();
         ExecutorService executorService = Executors.newFixedThreadPool(10);
 
@@ -127,10 +125,5 @@ public class StrategyRunner {
     private StrategyOutput runStock(StockFA stock) {
         StrategyInput input = new StrategyInput(stock, start, end);
         return flagStrategy.runStrategy(input);
-        //updateResults(flagOutput);
-    }
-
-    private synchronized void updateResults(StrategyOutput output) {
-        allResults.add(output);
     }
 }
