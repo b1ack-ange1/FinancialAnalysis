@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.financialanalysis.analysis.AnalysisBaseFunctions.findTrend;
@@ -34,6 +35,7 @@ import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getValidStockPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getVolume;
 import static com.financialanalysis.analysis.AnalysisTools.round;
+import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
 public class FlagStrategy extends AbstractStrategy {
@@ -46,6 +48,17 @@ public class FlagStrategy extends AbstractStrategy {
     private static final double PERCENTAGE_MAX_TARGET = 0.65;
 
     private static final int MIN_DATA_POINTS = 100;
+
+    double longTrendSlopeThreshold = 0.0;
+    double longTrendRSquareThreshold = 0.8;
+    double trendBotSlopeThresholdLower = -1.0;
+    double trendBotSlopeThresholdHigher = 0.0;
+    double trendTopSlopeThresholdLower = -1.0;
+    double trendTopSlopeThresholdHigher = 0.0;
+    double trendRSquareThreshold = 0.8;
+    double topBotSlopeDifferenceThreshold = 0.03;
+    int numTopDataPoints = 3;
+    int numBotDataPoints = 2;
 
     private double[] closingPrices;
     private double[] openPrices;
@@ -65,7 +78,7 @@ public class FlagStrategy extends AbstractStrategy {
         Symbol symbol = input.getStock().getSymbol();
 
         validStockPrice = getValidStockPrices(stock.getHistory(), input.getStartDate(), input.getEndDate());
-        if(validStockPrice.isEmpty() || validStockPrice.size() < 120) {
+        if(validStockPrice.isEmpty() || validStockPrice.size() < MIN_DATA_POINTS) {
             return new StrategyOutput(symbol, Account.createDefaultAccount(), new ArrayList<>(), "Flag");
         }
 
@@ -77,18 +90,29 @@ public class FlagStrategy extends AbstractStrategy {
         dates = getDates(validStockPrice);
         sma = sma(closingPrices, 100);
 
-        // Find the flags
-        List<Flag> flagPatterns = findFlagPatterns(stock);
+        if(runStrategies) {
+            // Find flag for most recent day
+            Optional<Flag> flag = findFlagForDay(closingPrices.length - 1, stock);
+            if(flag.isPresent()) {
+                log.info(symbol.getSymbol() + " has a flag.");
+                return new StrategyOutput(symbol, Account.createDefaultAccount(), Lists.newArrayList(flag.get().getFlagStockChart()), "Flag");
+            }
+        }
 
-        // Given these flags, buy and sell on them
-        Account runAccount = determineLongPositions(flagPatterns, stock);
+        if(backtest && !runStrategies) {
+            // Find the flags
+            List<Flag> flagPatterns = findFlagPatterns(stock);
 
-        // If this stock generated a buy signal, then lets report it
-        if(runAccount.getActivity().size() > 0) {
-            List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
-            log.info(stock.getSymbol().getSymbol() + " found " + runAccount.getActivity().size() + " transactions.");
+            // Given these flags, buy and sell on them
+            Account runAccount = determineLongPositions(flagPatterns, stock);
 
-            return new StrategyOutput(symbol, runAccount, flagCharts, "Flag");
+            // If this stock generated a buy signal, then lets report it
+            if(runAccount.getActivity().size() > 0) {
+                List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
+                log.info(stock.getSymbol().getSymbol() + " found " + runAccount.getActivity().size() + " transactions.");
+
+                return new StrategyOutput(symbol, runAccount, flagCharts, "Flag");
+            }
         }
 
         return new StrategyOutput(symbol, Account.createDefaultAccount(), new ArrayList<>(), "Flag");
@@ -96,146 +120,138 @@ public class FlagStrategy extends AbstractStrategy {
 
     @SneakyThrows
     private List<Flag> findFlagPatterns(StockFA stock) {
-        double longTrendSlopeThreshold = 0.0;
-        double longTrendRSquareThreshold = 0.8;
-        double trendBotSlopeThresholdLower = -1.0;
-        double trendBotSlopeThresholdHigher = 0.0;
-        double trendTopSlopeThresholdLower = -1.0;
-        double trendTopSlopeThresholdHigher = 0.0;
-        double trendRSquareThreshold = 0.8;
-        double topBotSlopeDifferenceThreshold = 0.03;
-        int numTopDataPoints = 3;
-        int numBotDataPoints = 2;
-
         List<Flag> flagPatterns = Lists.newArrayList();
         for(int i = closingPrices.length - 1; i >= 0 && i >= MIN_DATA_POINTS; i--) {
-
-            // Determine the flag top first
-            FlagTop flagTop = findBestFlagTop(i, stock.getSymbol());
-            Trend topTrend = flagTop.getTopTrend();
-            Trend botTrend = flagTop.getBotTrend();
-            int flagTopLength = flagTop.getFlagTopLength();
-
-            // If we don't have an RSquared value, then skip
-            if(Double.isNaN(topTrend.getSimpleRegression().getRSquare())|| Double.isNaN(botTrend.getSimpleRegression().getRSquare())) {
-                continue;
+            Optional<Flag> flag = findFlagForDay(i, stock);
+            if(flag.isPresent()) {
+                flagPatterns.add(flag.get());
             }
-
-            // Build the flag top lines
-            SimpleRegression lows = botTrend.getSimpleRegression();
-            SimpleRegression highs = topTrend.getSimpleRegression();
-            Line lowsTrendLine = new Line(lows);
-            Line highsTrendLine = new Line(highs);
-
-            int endOfFlagPole = i - flagTopLength;
-            FlagPole flagPole = findBestFlagPole(endOfFlagPole);
-            SimpleRegression flagPoleSR = flagPole.getFlagPole();
-
-            // If we don't have an RSquared value, then skip
-            if(Double.isNaN(flagPoleSR.getRSquare())) {
-                continue;
-            }
-
-            // Build the pole line
-            int flagPoleLength = flagPole.getFlagPoleLength();
-            int startOfFlagPole = endOfFlagPole - flagPoleLength;
-            Line flagPoleLine = new Line(flagPoleSR);
-
-            // Build the project price line, should continue with same slope and distance as flag pole
-            Line projectedPriceLine = new Line(lowsTrendLine.getPointForX(i), flagPoleLine.getSlope());
-
-            // If the projectPriceLine is never above buy/sell line, then ignore because no chance for profits
-            boolean profit = projectedPriceLine.getYForX(i + flagPoleLength) > highsTrendLine.getYForX(i);
-
-            // If the magnitude of the slope of the flagTop is greater than flagPole, skip
-            if(Math.abs(topTrend.getSimpleRegression().getSlope()) > Math.abs(flagPoleSR.getSlope())) {
-                continue;
-            }
-
-            // Ensure conditions for long trend are met
-            boolean accuracyLong = flagPoleSR.getRSquare() > longTrendRSquareThreshold;
-            boolean longSlope = longTrendSlopeThreshold < flagPoleSR.getSlope();
-            boolean longTrend = accuracyLong && longSlope;
-
-            // Ensure conditions for pattern are met
-            boolean numTopData = highs.getN() >= numTopDataPoints;
-            boolean numBotData = lows.getN() >= numBotDataPoints;
-            boolean numData = numBotData && numTopData;
-
-            boolean topSlope = trendTopSlopeThresholdLower < highs.getSlope() && highs.getSlope() < trendTopSlopeThresholdHigher;
-            boolean botSlope = trendBotSlopeThresholdLower < lows.getSlope() && lows.getSlope() < trendBotSlopeThresholdHigher;
-            boolean slopeDifference = Math.abs(lows.getSlope() - highs.getSlope()) < topBotSlopeDifferenceThreshold;
-            boolean trendSlope = topSlope && botSlope && slopeDifference;
-            boolean accuracy = lows.getRSquare() > trendRSquareThreshold && highs.getRSquare() > trendRSquareThreshold;
-
-            // Make sure the flagTop doesn't retrace more than 65% of the flagPole
-            double flagPoleLowest = flagPoleLine.getYForX((double) startOfFlagPole);
-            double flagPoleHighest = flagPoleLine.getYForX((double) endOfFlagPole);
-            double flagPoleHeight = flagPoleHighest - flagPoleLowest;
-            double minThresholdForLowestFlagTop = flagPoleLowest + (flagPoleHeight * 0.65);
-            double flagTopLowest = lowsTrendLine.getYForX((double) i);
-            boolean flagLowest = minThresholdForLowestFlagTop < flagTopLowest;
-
-            boolean patternTrend = accuracy && trendSlope && numData && flagLowest;
-
-            // Make sure there have been movement in the closing for the last 3 days
-            boolean sufficientMovement = determineIfSufficientMovement(i, startOfFlagPole, stock.getSymbol());
-
-            if(patternTrend && longTrend && profit && sufficientMovement) {
-                String info = String.format("%s_%s", stock.getSymbol(), dates.get(i).toString().split("T")[0]);
-                StockChart stockChart = new StockChart("Flag_" + info);
-                stockChart.setYAxis("Price");
-                stockChart.setXAxis("Date");
-                stockChart.addCandles(validStockPrice);
-                stockChart.addVolume(dates, volume);
-                stockChart.addXYLine(
-                        dates,
-                        lowsTrendLine.generateXValues(i - flagTopLength, i),
-                        lowsTrendLine.generateYValues(i - flagTopLength, i),
-                        "Bot-" + i + "-" + flagTopLength + "-[" + round(lowsTrendLine.getSlope(), 2) + "]"
-                );
-                stockChart.addXYLine(
-                        dates,
-                        highsTrendLine.generateXValues(i - flagTopLength, i),
-                        highsTrendLine.generateYValues(i - flagTopLength, i),
-                        "Top-" + i + "-" + flagTopLength + "-[" + round(highsTrendLine.getSlope(), 2) + "]"
-                );
-                stockChart.addXYLine(
-                        dates,
-                        flagPoleLine.generateXValues(startOfFlagPole, endOfFlagPole),
-                        flagPoleLine.generateYValues(startOfFlagPole, endOfFlagPole),
-                        "Pole-" + i + "-" + flagPoleLength + "-" + round(flagPoleLine.getSlope(), 2)
-                );
-                stockChart.addXYLine(
-                        dates,
-                        projectedPriceLine.generateXValues(i, i + flagPoleLength),
-                        projectedPriceLine.generateYValues(i, i + flagPoleLength),
-                        "Projected-" + i + "-" + flagPoleLength
-                );
-                stockChart.addVerticalLine(dates.get(i), "T ", null);
-                stockChart.addHorizontalLine(highsTrendLine.getYForX(i), "Buy/Sell");
-//                stockChart.render();
-
-                Flag flag = new Flag(
-                        flagTop,
-                        flagPole,
-                        projectedPriceLine.getYForX(i + flagPoleLength),
-                        highsTrendLine.getYForX(i),
-                        stockChart,
-                        projectedPriceLine
-                );
-                flagPatterns.add(flag);
-
-                i -= flagTopLength;
-            }
-
-            /**
-             * We only want the most recent day
-             */
-//            break;
         }
         // Reverse the list so it's in chronological order
         return Lists.reverse(flagPatterns);
+    }
+
+    private Optional<Flag> findFlagForDay(int dayIndex, StockFA stock) {
+        int i = dayIndex;
+
+        // Determine the flag top first
+        FlagTop flagTop = findBestFlagTop(i, stock.getSymbol());
+        Trend topTrend = flagTop.getTopTrend();
+        Trend botTrend = flagTop.getBotTrend();
+        int flagTopLength = flagTop.getFlagTopLength();
+
+        // If we don't have an RSquared value, then skip
+        if(Double.isNaN(topTrend.getSimpleRegression().getRSquare())|| Double.isNaN(botTrend.getSimpleRegression().getRSquare())) {
+            Optional.empty();
+        }
+
+        // Build the flag top lines
+        SimpleRegression lows = botTrend.getSimpleRegression();
+        SimpleRegression highs = topTrend.getSimpleRegression();
+        Line lowsTrendLine = new Line(lows);
+        Line highsTrendLine = new Line(highs);
+
+        int endOfFlagPole = i - flagTopLength;
+        FlagPole flagPole = findBestFlagPole(endOfFlagPole);
+        SimpleRegression flagPoleSR = flagPole.getFlagPole();
+
+        // If we don't have an RSquared value, then skip
+        if(Double.isNaN(flagPoleSR.getRSquare())) {
+            Optional.empty();
+        }
+
+        // Build the pole line
+        int flagPoleLength = flagPole.getFlagPoleLength();
+        int startOfFlagPole = endOfFlagPole - flagPoleLength;
+        Line flagPoleLine = new Line(flagPoleSR);
+
+        // Build the project price line, should continue with same slope and distance as flag pole
+        Line projectedPriceLine = new Line(lowsTrendLine.getPointForX(i), flagPoleLine.getSlope());
+
+        // If the projectPriceLine is never above buy/sell line, then ignore because no chance for profits
+        boolean profit = projectedPriceLine.getYForX(i + flagPoleLength) > highsTrendLine.getYForX(i);
+
+        // If the magnitude of the slope of the flagTop is greater than flagPole, skip
+        if(Math.abs(topTrend.getSimpleRegression().getSlope()) > Math.abs(flagPoleSR.getSlope())) {
+            Optional.empty();
+        }
+
+        // Ensure conditions for long trend are met
+        boolean accuracyLong = flagPoleSR.getRSquare() > longTrendRSquareThreshold;
+        boolean longSlope = longTrendSlopeThreshold < flagPoleSR.getSlope();
+        boolean longTrend = accuracyLong && longSlope;
+
+        // Ensure conditions for pattern are met
+        boolean numTopData = highs.getN() >= numTopDataPoints;
+        boolean numBotData = lows.getN() >= numBotDataPoints;
+        boolean numData = numBotData && numTopData;
+
+        boolean topSlope = trendTopSlopeThresholdLower < highs.getSlope() && highs.getSlope() < trendTopSlopeThresholdHigher;
+        boolean botSlope = trendBotSlopeThresholdLower < lows.getSlope() && lows.getSlope() < trendBotSlopeThresholdHigher;
+        boolean slopeDifference = Math.abs(lows.getSlope() - highs.getSlope()) < topBotSlopeDifferenceThreshold;
+        boolean trendSlope = topSlope && botSlope && slopeDifference;
+        boolean accuracy = lows.getRSquare() > trendRSquareThreshold && highs.getRSquare() > trendRSquareThreshold;
+
+        // Make sure the flagTop doesn't retrace more than 65% of the flagPole
+        double flagPoleLowest = flagPoleLine.getYForX((double) startOfFlagPole);
+        double flagPoleHighest = flagPoleLine.getYForX((double) endOfFlagPole);
+        double flagPoleHeight = flagPoleHighest - flagPoleLowest;
+        double minThresholdForLowestFlagTop = flagPoleLowest + (flagPoleHeight * 0.65);
+        double flagTopLowest = lowsTrendLine.getYForX((double) i);
+        boolean flagLowest = minThresholdForLowestFlagTop < flagTopLowest;
+
+        boolean patternTrend = accuracy && trendSlope && numData && flagLowest;
+
+        // Make sure there have been movement in the closing for the last 3 days
+        boolean sufficientMovement = determineIfSufficientMovement(i, startOfFlagPole, stock.getSymbol());
+
+        if(patternTrend && longTrend && profit && sufficientMovement) {
+            String info = String.format("%s_%s", stock.getSymbol(), dates.get(i).toString().split("T")[0]);
+            StockChart stockChart = new StockChart("Flag_" + info);
+            stockChart.setYAxis("Price");
+            stockChart.setXAxis("Date");
+            stockChart.addCandles(validStockPrice);
+            stockChart.addVolume(dates, volume);
+            stockChart.addXYLine(
+                    dates,
+                    lowsTrendLine.generateXValues(i - flagTopLength, i),
+                    lowsTrendLine.generateYValues(i - flagTopLength, i),
+                    "Bot-" + i + "-" + flagTopLength + "-[" + round(lowsTrendLine.getSlope(), 2) + "]"
+            );
+            stockChart.addXYLine(
+                    dates,
+                    highsTrendLine.generateXValues(i - flagTopLength, i),
+                    highsTrendLine.generateYValues(i - flagTopLength, i),
+                    "Top-" + i + "-" + flagTopLength + "-[" + round(highsTrendLine.getSlope(), 2) + "]"
+            );
+            stockChart.addXYLine(
+                    dates,
+                    flagPoleLine.generateXValues(startOfFlagPole, endOfFlagPole),
+                    flagPoleLine.generateYValues(startOfFlagPole, endOfFlagPole),
+                    "Pole-" + i + "-" + flagPoleLength + "-" + round(flagPoleLine.getSlope(), 2)
+            );
+            stockChart.addXYLine(
+                    dates,
+                    projectedPriceLine.generateXValues(i, i + flagPoleLength),
+                    projectedPriceLine.generateYValues(i, i + flagPoleLength),
+                    "Projected-" + i + "-" + flagPoleLength
+            );
+            stockChart.addVerticalLine(dates.get(i), "T ", null);
+            stockChart.addHorizontalLine(highsTrendLine.getYForX(i), "Buy/Sell");
+
+            Flag flag = new Flag(
+                    flagTop,
+                    flagPole,
+                    projectedPriceLine.getYForX(i + flagPoleLength),
+                    highsTrendLine.getYForX(i),
+                    stockChart,
+                    projectedPriceLine
+            );
+
+            return Optional.of(flag);
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -455,3 +471,121 @@ public class FlagStrategy extends AbstractStrategy {
         pvo = pvoResult.getPvo();
         pvoSignal = pvoResult.getPvoSignal();
  */
+
+//            // Determine the flag top first
+//            FlagTop flagTop = findBestFlagTop(i, stock.getSymbol());
+//            Trend topTrend = flagTop.getTopTrend();
+//            Trend botTrend = flagTop.getBotTrend();
+//            int flagTopLength = flagTop.getFlagTopLength();
+//
+//            // If we don't have an RSquared value, then skip
+//            if(Double.isNaN(topTrend.getSimpleRegression().getRSquare())|| Double.isNaN(botTrend.getSimpleRegression().getRSquare())) {
+//                continue;
+//            }
+//
+//            // Build the flag top lines
+//            SimpleRegression lows = botTrend.getSimpleRegression();
+//            SimpleRegression highs = topTrend.getSimpleRegression();
+//            Line lowsTrendLine = new Line(lows);
+//            Line highsTrendLine = new Line(highs);
+//
+//            int endOfFlagPole = i - flagTopLength;
+//            FlagPole flagPole = findBestFlagPole(endOfFlagPole);
+//            SimpleRegression flagPoleSR = flagPole.getFlagPole();
+//
+//            // If we don't have an RSquared value, then skip
+//            if(Double.isNaN(flagPoleSR.getRSquare())) {
+//                continue;
+//            }
+//
+//            // Build the pole line
+//            int flagPoleLength = flagPole.getFlagPoleLength();
+//            int startOfFlagPole = endOfFlagPole - flagPoleLength;
+//            Line flagPoleLine = new Line(flagPoleSR);
+//
+//            // Build the project price line, should continue with same slope and distance as flag pole
+//            Line projectedPriceLine = new Line(lowsTrendLine.getPointForX(i), flagPoleLine.getSlope());
+//
+//            // If the projectPriceLine is never above buy/sell line, then ignore because no chance for profits
+//            boolean profit = projectedPriceLine.getYForX(i + flagPoleLength) > highsTrendLine.getYForX(i);
+//
+//            // If the magnitude of the slope of the flagTop is greater than flagPole, skip
+//            if(Math.abs(topTrend.getSimpleRegression().getSlope()) > Math.abs(flagPoleSR.getSlope())) {
+//                continue;
+//            }
+//
+//            // Ensure conditions for long trend are met
+//            boolean accuracyLong = flagPoleSR.getRSquare() > longTrendRSquareThreshold;
+//            boolean longSlope = longTrendSlopeThreshold < flagPoleSR.getSlope();
+//            boolean longTrend = accuracyLong && longSlope;
+//
+//            // Ensure conditions for pattern are met
+//            boolean numTopData = highs.getN() >= numTopDataPoints;
+//            boolean numBotData = lows.getN() >= numBotDataPoints;
+//            boolean numData = numBotData && numTopData;
+//
+//            boolean topSlope = trendTopSlopeThresholdLower < highs.getSlope() && highs.getSlope() < trendTopSlopeThresholdHigher;
+//            boolean botSlope = trendBotSlopeThresholdLower < lows.getSlope() && lows.getSlope() < trendBotSlopeThresholdHigher;
+//            boolean slopeDifference = Math.abs(lows.getSlope() - highs.getSlope()) < topBotSlopeDifferenceThreshold;
+//            boolean trendSlope = topSlope && botSlope && slopeDifference;
+//            boolean accuracy = lows.getRSquare() > trendRSquareThreshold && highs.getRSquare() > trendRSquareThreshold;
+//
+//            // Make sure the flagTop doesn't retrace more than 65% of the flagPole
+//            double flagPoleLowest = flagPoleLine.getYForX((double) startOfFlagPole);
+//            double flagPoleHighest = flagPoleLine.getYForX((double) endOfFlagPole);
+//            double flagPoleHeight = flagPoleHighest - flagPoleLowest;
+//            double minThresholdForLowestFlagTop = flagPoleLowest + (flagPoleHeight * 0.65);
+//            double flagTopLowest = lowsTrendLine.getYForX((double) i);
+//            boolean flagLowest = minThresholdForLowestFlagTop < flagTopLowest;
+//
+//            boolean patternTrend = accuracy && trendSlope && numData && flagLowest;
+//
+//            // Make sure there have been movement in the closing for the last 3 days
+//            boolean sufficientMovement = determineIfSufficientMovement(i, startOfFlagPole, stock.getSymbol());
+//
+//            if(patternTrend && longTrend && profit && sufficientMovement) {
+//                String info = String.format("%s_%s", stock.getSymbol(), dates.get(i).toString().split("T")[0]);
+//                StockChart stockChart = new StockChart("Flag_" + info);
+//                stockChart.setYAxis("Price");
+//                stockChart.setXAxis("Date");
+//                stockChart.addCandles(validStockPrice);
+//                stockChart.addVolume(dates, volume);
+//                stockChart.addXYLine(
+//                        dates,
+//                        lowsTrendLine.generateXValues(i - flagTopLength, i),
+//                        lowsTrendLine.generateYValues(i - flagTopLength, i),
+//                        "Bot-" + i + "-" + flagTopLength + "-[" + round(lowsTrendLine.getSlope(), 2) + "]"
+//                );
+//                stockChart.addXYLine(
+//                        dates,
+//                        highsTrendLine.generateXValues(i - flagTopLength, i),
+//                        highsTrendLine.generateYValues(i - flagTopLength, i),
+//                        "Top-" + i + "-" + flagTopLength + "-[" + round(highsTrendLine.getSlope(), 2) + "]"
+//                );
+//                stockChart.addXYLine(
+//                        dates,
+//                        flagPoleLine.generateXValues(startOfFlagPole, endOfFlagPole),
+//                        flagPoleLine.generateYValues(startOfFlagPole, endOfFlagPole),
+//                        "Pole-" + i + "-" + flagPoleLength + "-" + round(flagPoleLine.getSlope(), 2)
+//                );
+//                stockChart.addXYLine(
+//                        dates,
+//                        projectedPriceLine.generateXValues(i, i + flagPoleLength),
+//                        projectedPriceLine.generateYValues(i, i + flagPoleLength),
+//                        "Projected-" + i + "-" + flagPoleLength
+//                );
+//                stockChart.addVerticalLine(dates.get(i), "T ", null);
+//                stockChart.addHorizontalLine(highsTrendLine.getYForX(i), "Buy/Sell");
+//
+//                Flag flag = new Flag(
+//                        flagTop,
+//                        flagPole,
+//                        projectedPriceLine.getYForX(i + flagPoleLength),
+//                        highsTrendLine.getYForX(i),
+//                        stockChart,
+//                        projectedPriceLine
+//                );
+//                flagPatterns.add(flag);
+//
+//                i -= flagTopLength;
+//            }
