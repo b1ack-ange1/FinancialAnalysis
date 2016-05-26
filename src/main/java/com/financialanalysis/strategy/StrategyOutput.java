@@ -6,10 +6,10 @@ import com.financialanalysis.graphing.StockChart;
 import lombok.Data;
 
 import java.util.List;
-import java.util.Map;
 
 @Data
 public class StrategyOutput {
+    private final Symbol symbol;
     private final Account account;
     private final List<StockChart> charts;
     private final String strategyName;

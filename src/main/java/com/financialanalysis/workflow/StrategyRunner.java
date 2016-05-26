@@ -91,7 +91,10 @@ public class StrategyRunner {
             Map<Symbol, StockFA> stockMap = stockStore.load(list);
             Collection<StockFA> stocks = stockMap.values();
             stocks.forEach(s -> {
-                results.add(runStock(s));
+                StrategyOutput output = runStock(s);
+                if(!output.isEmpty()) {
+                    results.add(output);
+                }
 //                futures.add(executorService.submit(() -> runStock(s)));
             });
         });

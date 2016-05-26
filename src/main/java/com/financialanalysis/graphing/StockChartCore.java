@@ -37,7 +37,7 @@ import static com.financialanalysis.analysis.AnalysisTools.getLowPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
 
 @Log4j
-public class StockChartCore extends ApplicationFrame {
+public class StockChartCore /*extends ApplicationFrame*/ {
     private final String title;
 
     private List<Marker> domainMarkers = new ArrayList<>();
@@ -54,7 +54,7 @@ public class StockChartCore extends ApplicationFrame {
     @Setter private String numDays = "";
 
     public StockChartCore(String title) {
-        super(title);
+//        super(title);
         this.title = title;
     }
 
@@ -262,12 +262,12 @@ public class StockChartCore extends ApplicationFrame {
         NumberAxis range = (NumberAxis) plot.getRangeAxis();
         range.setRange(min, max);
 
-        ChartPanel chartPanel = new ChartPanel(chart);
-        chartPanel.setPreferredSize(new java.awt.Dimension(700, 470));
-        setContentPane(chartPanel);
-        pack();
-        RefineryUtilities.centerFrameOnScreen(this);
-        setVisible(true);
+//        ChartPanel chartPanel = new ChartPanel(chart);
+//        chartPanel.setPreferredSize(new java.awt.Dimension(700, 470));
+//        setContentPane(chartPanel);
+//        pack();
+//        RefineryUtilities.centerFrameOnScreen(this);
+//        setVisible(true);
     }
 
     public JFreeChart getChart() {

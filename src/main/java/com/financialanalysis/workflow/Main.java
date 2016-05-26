@@ -27,6 +27,8 @@ public class Main {
     @Parameter(names={"--runStrategies", "-rs"}, description = "Run strategies for today.")
     public static boolean runStrategies;
 
+    @Parameter(names={"--chart", "-c"}, description = "Save charts from run.")
+    public static boolean saveCharts;
 
     public static void main(String[] args) {
         Main main = new Main();

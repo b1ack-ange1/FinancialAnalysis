@@ -24,6 +24,7 @@ import lombok.extern.log4j.Log4j;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.financialanalysis.workflow.Main.*;
 
@@ -111,19 +112,28 @@ public class ServiceMain implements Runnable {
     public void backtestAll() {
         List<StrategyOutput> outputs = strategyRunner.run();
         reporter.generateAverageAccountSummary(outputs);
+
+        List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
+        log.info(String.join(",", symbolNames));
+        log.info(symbolNames.size());
     }
 
     public void backtestUntil(int numFound) {
         List<StrategyOutput> outputs = Lists.newArrayList();
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         do {
             List<StockFA> stock = stockRetriever.getUniqueRandomStocks(1);
-            buf.append(stock.get(0) + " ");
-            outputs.addAll(strategyRunner.runOnStocks(stock));
+            List<StrategyOutput> newOutputs = strategyRunner.runOnStocks(stock);
+            if(!newOutputs.isEmpty()) {
+                buf.append(newOutputs.get(0).getSymbol().getSymbol() + ",");
+            }
+            outputs.addAll(newOutputs);
         } while(outputs.size() < numFound);
 
         List<Report> reports = reporter.generateReports(outputs);
-        chartStore.saveBackTestCharts(reports);
+        if(saveCharts) {
+            chartStore.saveBackTestCharts(reports);
+        }
         reporter.generateIndividualAccountSummary(outputs);
         reporter.generateAverageAccountSummary(outputs);
         log.info(buf.toString());
@@ -133,72 +143,19 @@ public class ServiceMain implements Runnable {
         List<String> inputSymbols = Lists.newArrayList(commaSeperatedSymbols.split(","));
         List<Symbol> symbols = symbolStore.load(inputSymbols);
 
-        List<StockFA> stocks = new ArrayList<>(stockStore.load(symbols).values());
+        List<StockFA> stocks = Lists.newArrayList(stockStore.load(symbols).values());
         List<StrategyOutput> outputs = Lists.newArrayList();
         outputs.addAll(strategyRunner.runOnStocks(stocks));
 
         List<Report> reports = reporter.generateReports(outputs);
-        chartStore.saveBackTestCharts(reports);
-        reporter.generateIndividualAccountSummary(outputs);
+        if(saveCharts) {
+            chartStore.saveBackTestCharts(reports);
+        }
+//        reporter.generateIndividualAccountSummary(outputs);
         reporter.generateAverageAccountSummary(outputs);
+
+        List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
+        log.info(String.join(",", symbolNames));
+        log.info(symbolNames.size());
     }
-
-//    private void runOnRand(int num) {
-//        List<StockFA> randStocks;
-//        int processed = 0;
-//        int total = num;
-//        double totalTime = 0;
-//        do {
-//            long start = System.nanoTime();
-//
-//            randStocks = stockRetriever.getUniqueRandomStocks(BACK_TEST_BATCH_SIZE);
-//            analysis.analyzeStocks(randStocks);
-//
-//            long end = System.nanoTime();
-//            long elapsedTime = end - start;
-//            double seconds = (double)elapsedTime / 1000000000.0;
-//            totalTime += seconds;
-//            processed += randStocks.size();
-//            double percentage = processed * 100.0 / total;
-//            log.info(String.format("Processed %d/%d %.2f%% took %.2f sec. Total %.2f",
-//                    processed, total, percentage, seconds, totalTime));
-//        } while(!randStocks.isEmpty() && processed < num);
-//    }
-
-//    private void performBackTest() {
-//        backTestAll();
-////        backTestNum(10000);
-//        analysis.reportResultsByStock();
-//    }
-//
-//    private void backTest(List<Symbol> symbols) {
-//        List<StockFA> stockList = stockRetriever.getStocks(symbols);
-//        analysis.analyzeStocks(stockList);
-//    }
-//
-//    private int BACK_TEST_BATCH_SIZE = 100;
-//    private void backTestAll() {
-//        log.info("Beginning backTestAll");
-//        List<StockFA> randStocks;
-//        int processed = 0;
-//        int total = stockRetriever.getNumAvailableStocks();
-//        double totalTime = 0;
-//        do {
-//            long start = System.nanoTime();
-//
-//            randStocks = stockRetriever.getUniqueRandomStocks(BACK_TEST_BATCH_SIZE);
-//            analysis.analyzeStocks(randStocks);
-//
-//            long end = System.nanoTime();
-//            long elapsedTime = end - start;
-//            double seconds = (double)elapsedTime / 1000000000.0;
-//            totalTime += seconds;
-//            processed += randStocks.size();
-//            double percentage = processed * 100.0 / total;
-//            log.info(String.format("Processed %d/%d %.2f%% took %.2f sec. Total %.2f",
-//                    processed, total, percentage, seconds, totalTime));
-//        } while(!randStocks.isEmpty());
-//    }
-//
-
 }

@@ -34,7 +34,6 @@ import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getValidStockPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getVolume;
 import static com.financialanalysis.analysis.AnalysisTools.round;
-import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
 public class FlagStrategy extends AbstractStrategy {
@@ -63,10 +62,11 @@ public class FlagStrategy extends AbstractStrategy {
     @SneakyThrows
     public StrategyOutput runStrategy(StrategyInput input) {
         StockFA stock = input.getStock();
+        Symbol symbol = input.getStock().getSymbol();
 
         validStockPrice = getValidStockPrices(stock.getHistory(), input.getStartDate(), input.getEndDate());
         if(validStockPrice.isEmpty() || validStockPrice.size() < 120) {
-            return new StrategyOutput(Account.createDefaultAccount(), new ArrayList<>(), "Flag");
+            return new StrategyOutput(symbol, Account.createDefaultAccount(), new ArrayList<>(), "Flag");
         }
 
         closingPrices = getClosingPrices(validStockPrice);
@@ -88,10 +88,10 @@ public class FlagStrategy extends AbstractStrategy {
             List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
             log.info(stock.getSymbol().getSymbol() + " found " + runAccount.getActivity().size() + " transactions.");
 
-            return new StrategyOutput(runAccount, flagCharts, "Flag");
+            return new StrategyOutput(symbol, runAccount, flagCharts, "Flag");
         }
 
-        return new StrategyOutput(Account.createDefaultAccount(), new ArrayList<>(), "Flag");
+        return new StrategyOutput(symbol, Account.createDefaultAccount(), new ArrayList<>(), "Flag");
     }
 
     @SneakyThrows
@@ -107,7 +107,7 @@ public class FlagStrategy extends AbstractStrategy {
         int numTopDataPoints = 3;
         int numBotDataPoints = 2;
 
-        List<Flag> flagPatterns = new ArrayList<>();
+        List<Flag> flagPatterns = Lists.newArrayList();
         for(int i = closingPrices.length - 1; i >= 0 && i >= MIN_DATA_POINTS; i--) {
 
             // Determine the flag top first
@@ -178,7 +178,13 @@ public class FlagStrategy extends AbstractStrategy {
 
             boolean patternTrend = accuracy && trendSlope && numData && flagLowest;
 
-            if(patternTrend && longTrend && profit) {
+            // Make sure there have been movement in the closing for the last 3 days
+            boolean sufficientMovement = (closingPrices[i] != closingPrices[i-1]) &&
+                                         (closingPrices[i] != closingPrices[i-2]) &&
+                                         (closingPrices[i] != closingPrices[i-3]);
+
+
+            if(patternTrend && longTrend && profit && sufficientMovement) {
                 String info = String.format("%s_%s", stock.getSymbol(), dates.get(i).toString().split("T")[0]);
                 StockChart stockChart = new StockChart("Flag_" + info);
                 stockChart.setYAxis("Price");
@@ -309,7 +315,6 @@ public class FlagStrategy extends AbstractStrategy {
         return sr;
     }
 
-
     private Account determineLongPositions(List<Flag> flags, StockFA stock) {
         Account runAccount = Account.createDefaultAccount();
         runAccount.setSymbol(stock.getSymbol());
@@ -364,8 +369,8 @@ public class FlagStrategy extends AbstractStrategy {
             stockChart.addXYLine(dates, sma, "100-SMA");
 
             if (!runAccount.getActivity().isEmpty()) {
-//                stockChart.setGainLoss(String.format("[%.2f%%]", runAccount.getPercentageGainLoss()));
-//                stockChart.setNumDays(String.format("%d", runAccount.getDayBetweenFirstAndLastAction()));
+                stockChart.setGainLoss(String.format("[%.2f%%]", runAccount.getPercentageGainLoss()));
+                stockChart.setNumDays(String.format("%d", runAccount.getDayBetweenFirstAndLastAction()));
 
                 for (Action action : runAccount.getActivity()) {
                     int actionIndex = dates.indexOf(action.getDate());
