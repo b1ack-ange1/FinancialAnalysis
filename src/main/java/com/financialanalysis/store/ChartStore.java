@@ -37,11 +37,12 @@ public class ChartStore {
     /**
      * Save to var/charts/<date>/<chart-name>
      */
-    public void save(List<Report> reports) {
+    public Path save(List<Report> reports) {
         DateTime today = DateTimeUtils.getToday();
         String date = today.toString().split("T")[0];
         Path path = Paths.get(getChartsStoreDir() + date);
         save(path, reports, date);
+        return path;
     }
 
     /**
@@ -69,6 +70,10 @@ public class ChartStore {
     public List<File> loadFromDate(DateTime dateTime) {
         String date = dateTime.toString().split("T")[0];
         Path path = Paths.get(getChartsStoreDir() + date);
+        return load(path);
+    }
+
+    public List<File> load(Path path) {
         File dir = path.toFile();
 
         if(!dir.exists()) {

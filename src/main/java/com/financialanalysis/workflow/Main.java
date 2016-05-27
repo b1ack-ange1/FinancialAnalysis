@@ -33,14 +33,23 @@ public class Main {
     @Parameter(names={"--percentiles", "-p"}, description = "Show percentiles.")
     public static boolean percentiles;
 
+    @Parameter(names={"--help", "-h"})
+    public static boolean help;
+
     public static void main(String[] args) {
         Main main = new Main();
-        new JCommander(main, args);
-        main.run();
+        JCommander jCommander = new JCommander(main, args);
+        jCommander.setProgramName("Scanner");
+
+        if(main.help) {
+            jCommander.usage();
+        } else {
+            main.run();
+        }
     }
 
     private void run() {
-        Injector injector = Guice.createInjector(new FAModule());
+            Injector injector = Guice.createInjector(new FAModule());
         FAService faService = injector.getInstance(FAService.class);
         faService.start();
         faService.stop();

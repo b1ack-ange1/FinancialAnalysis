@@ -10,8 +10,6 @@ import com.financialanalysis.store.ChartStore;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
 import com.financialanalysis.strategy.StrategyOutput;
-import com.financialanalysis.updater.StockMerger;
-import com.financialanalysis.updater.StockPuller;
 import com.financialanalysis.updater.StockRetriever;
 import com.financialanalysis.updater.StockUpdater;
 import com.financialanalysis.updater.SymbolUpdater;
@@ -21,6 +19,7 @@ import com.google.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,12 +27,9 @@ import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
 public class ServiceMain implements Runnable {
-    private final Analysis analysis;
-    private final StockPuller stockPuller;
     private final StockRetriever stockRetriever;
     private final StockStore stockStore;
     private final StockUpdater stockUpdater;
-    private final StockMerger stockMerger;
     private final Questrade questrade;
     private final SymbolUpdater symbolUpdater;
     private final StrategyRunner strategyRunner;
@@ -43,12 +39,9 @@ public class ServiceMain implements Runnable {
     private final Emailer emailer;
 
     @Inject
-    public ServiceMain(Analysis analysis,
-                       StockPuller stockPuller,
-                       StockRetriever stockRetriever,
+    public ServiceMain(StockRetriever stockRetriever,
                        StockStore stockStore,
                        StockUpdater stockUpdater,
-                       StockMerger stockMerger,
                        Questrade questrade,
                        SymbolUpdater symbolUpdater,
                        StrategyRunner strategyRunner,
@@ -56,12 +49,9 @@ public class ServiceMain implements Runnable {
                        ChartStore chartStore,
                        SymbolStore symbolStore,
                        Emailer emailer) {
-        this.analysis = analysis;
-        this.stockPuller = stockPuller;
         this.stockRetriever = stockRetriever;
         this.stockStore = stockStore;
         this.stockUpdater = stockUpdater;
-        this.stockMerger = stockMerger;
         this.questrade = questrade;
         this.symbolUpdater = symbolUpdater;
         this.strategyRunner = strategyRunner;
@@ -77,6 +67,10 @@ public class ServiceMain implements Runnable {
         log.info("Starting ServiceMain");
         long start = System.nanoTime();
 
+        if(updateStocks || updateSymbols) {
+            questrade.authenticate();
+        }
+
         if(updateSymbols) {
             symbolUpdater.refresh();
         }
@@ -88,8 +82,8 @@ public class ServiceMain implements Runnable {
         if(runStrategies) {
             List<StrategyOutput> allResults = strategyRunner.run();
             List<Report> reports = reporter.generateReports(allResults);
-            chartStore.save(reports);
-//            emailer.emailReports(reports);
+            Path path = chartStore.save(reports);
+            emailer.emailReports(path);
         }
 
         if(backtest && !runStrategies) {
@@ -108,7 +102,12 @@ public class ServiceMain implements Runnable {
     }
 
     public void backtestAll() {
+        // Run on all stocks and save results
         List<StrategyOutput> outputs = strategyRunner.run();
+        if(percentiles) {
+            reporter.generatePercentilesChart(outputs);
+        }
+        
         reporter.generateAverageAccountSummary(outputs);
 
         List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
@@ -117,6 +116,7 @@ public class ServiceMain implements Runnable {
     }
 
     public void backtestUntil(int numFound) {
+        // Run until we have found numFound flag
         List<StrategyOutput> outputs = Lists.newArrayList();
         StringBuilder buf = new StringBuilder();
         do {

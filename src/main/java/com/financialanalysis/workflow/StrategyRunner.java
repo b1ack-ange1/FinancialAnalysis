@@ -1,5 +1,6 @@
 package com.financialanalysis.workflow;
 
+import com.financialanalysis.common.DateTimeUtils;
 import com.financialanalysis.data.StockFA;
 import com.financialanalysis.data.Symbol;
 import com.financialanalysis.store.StockStore;
@@ -19,12 +20,9 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static com.financialanalysis.updater.StockPuller.DEFAULT_START_DATE;
+import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
 @Singleton
@@ -34,9 +32,9 @@ public class StrategyRunner {
     private final StockStore stockStore;
 
 //    private final DateTime start = DEFAULT_START_DATE;
-    private final DateTime start = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
-
-    private final DateTime end = DateTime.now(DateTimeZone.forID("America/Toronto"));
+    private final DateTime backTestStartDate = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+    private final DateTime runStrategiesStartDate = DateTimeUtils.getToday().minusDays(200);
+    private final DateTime end = DateTimeUtils.getToday();
     private final int MAX_BATCH_SIZE = 100;
 
     @Inject
@@ -52,9 +50,7 @@ public class StrategyRunner {
     @SneakyThrows
     public List<StrategyOutput> runOnStocks(List<StockFA> stocks) {
         log.info("Beginning to run on select stocks.");
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-        List<Future<StrategyOutput>> futures = new LinkedList<>();
         List<StrategyOutput> results = new LinkedList<>();
 
         stocks.forEach(s -> {
@@ -62,12 +58,7 @@ public class StrategyRunner {
             if(!output.isEmpty()) {
                 results.add(output);
             }
-//          futures.add(executorService.submit(() -> runStock(s)));
         });
-
-//        futures.forEach(f -> {
-//            results.add(f.get());
-//        });
 
         return results;
     }
@@ -79,7 +70,6 @@ public class StrategyRunner {
     public List<StrategyOutput> run() {
         log.info("Beginning to run all stocks.");
         List<Symbol> allSymbols = symbolStore.load();
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
 
         List<Future<StrategyOutput>> futures = new LinkedList<>();
         List<StrategyOutput> results = new LinkedList<>();
@@ -93,37 +83,21 @@ public class StrategyRunner {
                 if(!output.isEmpty()) {
                     results.add(output);
                 }
-//                futures.add(executorService.submit(() -> runStock(s)));
             });
         });
 
-//        futures.forEach(f -> {
-//            try {
-//                results.add(f.get());
-//            } catch (ExecutionException | InterruptedException e) {
-//                log.error("Failed to run Strategy", e);
-//            }
-//        });
-
         return results;
-
-//        // Wait for everything to be finished
-//        log.info("Waiting for strategies to finish.");
-//        executorService.shutdown();
-//        try {
-//            executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-//        } catch (InterruptedException e) {
-//            // Stop everything and report what we have
-//            log.error("All threads did not shut down, killing them ...");
-//            executorService.shutdownNow();
-//        }
-//        log.info("Run strategies has finished.");
-//
-//        return allResults;
     }
 
     private StrategyOutput runStock(StockFA stock) {
-        StrategyInput input = new StrategyInput(stock, start, end);
+        StrategyInput input;
+
+        if(runStrategies) {
+            input = new StrategyInput(stock, runStrategiesStartDate, end);
+        } else {
+            input = new StrategyInput(stock, backTestStartDate, end);
+        }
+
         return flagStrategy.runStrategy(input);
     }
 }

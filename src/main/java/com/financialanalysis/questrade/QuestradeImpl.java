@@ -12,7 +12,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpResponseException;
@@ -22,13 +21,8 @@ import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,8 +40,8 @@ public class QuestradeImpl implements Questrade {
     private static int SOCKET_TIMEOUT_MS = 2000;
     private static int MAX_TRIES = 3;
 
-    private static AuthenticationTokens authTokens;
-    private static Header authenticationHeader;
+    private AuthenticationTokens authTokens;
+    private Header authenticationHeader;
 
     static {
         createAuthStore();
@@ -57,7 +51,9 @@ public class QuestradeImpl implements Questrade {
     @SneakyThrows
     private static void createAuthStore() {
         Path path = Paths.get(getAuthStoreDir());
-        Files.createDirectories(path);
+        if(!Files.exists(path)) {
+            Files.createDirectories(path);
+        }
     }
 
     private static String getAuthStoreDir() {
@@ -67,8 +63,9 @@ public class QuestradeImpl implements Questrade {
     /**
      * Must authenticate before making any calls
      */
+    @Override
     @SneakyThrows
-    private static void authenticate() {
+    public void authenticate() {
         Gson gson = new Gson();
         File credFile = new File(getAuthStoreDir() + "cred");
         File tokenFile = new File(getAuthStoreDir() + "token");
@@ -119,6 +116,7 @@ public class QuestradeImpl implements Questrade {
     /**
      * Searchs for all symbols with a prefix
      */
+    @Override
     public SymbolsSearchResponse symbolSearch(String prefix) throws Exception {
         String api = "v1/symbols/search";
         Map<String, Object> params = new LinkedHashMap<>();
@@ -133,6 +131,7 @@ public class QuestradeImpl implements Questrade {
     /**
      * Get the symbol information for a symbol with id in ids
      */
+    @Override
     public SymbolsIdResponse getSymbolsId(List<String> ids) throws IOException {
         String api = "v1/symbols";
         Map<String, Object> params = new LinkedHashMap<>();
@@ -149,6 +148,7 @@ public class QuestradeImpl implements Questrade {
     /**
      * Gets candles for a symbol
      */
+    @Override
     public MarketCandlesResponse getMarketCandles(Symbol symbol,
                                                   DateTime start,
                                                   DateTime end,

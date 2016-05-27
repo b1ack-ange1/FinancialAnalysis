@@ -9,10 +9,14 @@ import org.joda.time.DateTime;
 import java.util.List;
 
 public interface Questrade {
+    void authenticate();
+
     SymbolsSearchResponse symbolSearch(String prefix) throws Exception;
 
     SymbolsIdResponse getSymbolsId(List<String> ids) throws Exception;
 
-    MarketCandlesResponse getMarketCandles(Symbol symbol, DateTime start, DateTime end,
+    MarketCandlesResponse getMarketCandles(Symbol symbol,
+                                           DateTime start,
+                                           DateTime end,
                                            HistoricDataGranularity interval) throws Exception;
 }

@@ -24,6 +24,7 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 
@@ -45,7 +46,7 @@ public class Emailer {
     }
 
     @SneakyThrows
-    public void emailReports() {
+    public void emailReports(Path path) {
         log.info("Emailing reports");
 
         File emailCred = new File(getEmailFile());
@@ -72,7 +73,7 @@ public class Emailer {
             }
             message.setSubject("Daily Stock Update");
 
-            List<File> reports = chartStore.loadFromDate(DateTime.now(DateTimeZone.forID("America/Toronto")));
+            List<File> reports = chartStore.load(path);
 
             if(reports.size() > MAX_CHARTS) {
                 message.setText("Found too many reports to email.");

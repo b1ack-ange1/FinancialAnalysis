@@ -32,8 +32,6 @@ public class StockPuller {
 
     public static DateTime DEFAULT_START_DATE = new DateTime("2014-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
 
-    private static final int NUM_TRYS = 1;
-
     @Inject
     public StockPuller(QuestradeImpl questradeImpl) {
         this.questrade = questradeImpl;
@@ -53,17 +51,16 @@ public class StockPuller {
             StockFA stockFA = pullStockFromYahoo(symbol, from, to);
             log.info("Pulled " + symbol.getSymbol() + " from Yahoo");
             return stockFA;
-        } catch (IOException e) {
-//            log.warn("Pulling " + symbol.getSymbol() + " from Yahoo failed.", e);
+        } catch (Exception e) {
+            // Do nothing
         }
 
         try {
-            // Try pulling from Questrade now
-
+            // Try pulling from Questrade
             StockFA stockFA = pullStockFromQuestrade(symbol, from, to);
             log.info("Pulled " + symbol.getSymbol() + " from Questrade.");
             return stockFA;
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Pulling " + symbol.getSymbol() + " from Questrade failed.", e);
         }
 

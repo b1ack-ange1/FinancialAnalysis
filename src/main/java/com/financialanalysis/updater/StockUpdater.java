@@ -122,8 +122,6 @@ public class StockUpdater {
                     storedStocksChanged = true;
                 } catch (Exception e) {
                     log.error("Add to store failed: " + symbol.getSymbol());
-                    // TODO: This means the stock can't be pulled, store in, should save in a file
-                    // that can be cached and used as a black list
                 }
             }
         }
@@ -131,16 +129,6 @@ public class StockUpdater {
         if(storedStocksChanged) {
             stockStore.store(storedStocks);
         }
-    }
-
-    /**
-     * Will delete symbols from stockStore, repull them from the network and
-     * save them back into stockStore. This happens usually, if a stock become
-     * corrupted. ie. malformed json
-     * @param symbols
-     */
-    public void refreshStock(List<String> symbols) {
-
     }
 
     /**
@@ -171,6 +159,7 @@ public class StockUpdater {
             }
         }
 
+        List<Symbol> failedSymbols = Lists.newArrayList();
         Map<Symbol, StockFA> updatedStocks = new HashMap<>();
         symbols = stocksToPull.keySet();
         for(Symbol symbol : symbols) {
@@ -185,8 +174,10 @@ public class StockUpdater {
                 updatedStocks.put(symbol, stockFa);
             } catch (Exception e) {
                 log.error("Update failed: " + stockToPull.getSymbol());
+                failedSymbols.add(symbol);
             }
         }
+        log.info("Failed to pull: " + failedSymbols.size());
 
         return updatedStocks;
     }
