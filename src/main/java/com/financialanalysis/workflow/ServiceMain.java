@@ -9,6 +9,7 @@ import com.financialanalysis.reports.Reporter;
 import com.financialanalysis.store.ChartStore;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
+import com.financialanalysis.strategy.FlagConfig;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.updater.StockRetriever;
 import com.financialanalysis.updater.StockUpdater;
@@ -104,10 +105,15 @@ public class ServiceMain implements Runnable {
     public void backtestAll() {
         // Run on all stocks and save results
         List<StrategyOutput> outputs = strategyRunner.run();
+        List<Report> reports = reporter.generateReports(outputs);
+
+        if(saveCharts) {
+            chartStore.saveBackTestCharts(reports);
+        }
         if(percentiles) {
             reporter.generatePercentilesChart(outputs);
         }
-        
+
         reporter.generateAverageAccountSummary(outputs);
 
         List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
