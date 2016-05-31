@@ -68,8 +68,6 @@ public class ServiceMain implements Runnable {
         log.info("Starting ServiceMain");
         long start = System.nanoTime();
 
-        FlagConfig.saveDefault();
-
         if(updateStocks || updateSymbols) {
             questrade.authenticate();
         }
