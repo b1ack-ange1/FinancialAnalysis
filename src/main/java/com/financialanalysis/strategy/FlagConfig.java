@@ -13,17 +13,30 @@ import java.nio.file.Paths;
 
 @Data
 public class FlagConfig {
-    // Buy Sell
+    // EXIT
     int flagLookAheadDays = 8;
-    double percentageMaxTarget = 0.65;
+    double percentageMaxTarget = 0.66;
     double allowableGapUp = 0.05;
 
-    // PVO
+    // ENTRY
+
+    // pvo
     int defaultFastPeriod = 12;
     int defaultSlowPeriod = 26;
     int defaultSignalPeriod = 9;
 
     // Flag
+    // Determine the shape of flag top and flag pole
+    int minFlagTopLen = 5;
+    int maxFlagTopLen = 30;
+    int minFlagPoleLen = 5;
+    int maxFlagPoleLen = 60;
+    int maxExtremaLookBackPeriod = 3;
+    int maxExtremaLookForwardPeriod = 3;
+    int minExtremaLookBackPeriod = 3;
+    int minExtremaLookForwardPeriod = 3;
+
+    // Determine the contraints on flag shape
     double flagPoleSlopeThreshold = 0.0;
     double flagPoleRSquareThreshold = 0.8;
     double trendBotSlopeThresholdLower = -1.0;
@@ -35,13 +48,9 @@ public class FlagConfig {
     int numTopDataPoints = 3;
     int numBotDataPoints = 2;
 
-    int maxInsufficientMovementCount = 3;
-
-    int minFlagTopLen = 5;
-    int maxFlagTopLen = 30;
-    int minFlagPoleLen = 5;
-    int maxFlagPoleLen = 60;
-
+    // Determine if there is enough stock movement
+    int maxInsufficientMovementCloseToPrevClose = 3;
+    int maxInsufficientMovementHighToLowCount = 3;
 
     private final static String FILE_NAME = "flag";
     static {

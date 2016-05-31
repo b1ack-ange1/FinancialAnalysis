@@ -191,7 +191,7 @@ public class FlagStrategy {
         boolean patternTrend = accuracy && trendSlope && numData && flagLowest;
 
         // Make sure there have been movement in the closing for the last 3 days
-        boolean sufficientMovement = determineIfSufficientMovement(i, startOfFlagPole, stock.getSymbol());
+        boolean sufficientMovement = determineIfSufficientMovement(i, startOfFlagPole);
 
         if(patternTrend && longTrend && profit && sufficientMovement) {
             String info = String.format("%s_%s", stock.getSymbol(), dates.get(i).toString().split("T")[0]);
@@ -249,23 +249,30 @@ public class FlagStrategy {
      * 3) ?? Volume must be greater than ??
      * @return
      */
-    private boolean determineIfSufficientMovement(int startIndex, int startOfFlagPole, Symbol symbol) {
-        int inSufficientMovementCount = 0;
+    private boolean determineIfSufficientMovement(int startIndex, int startOfFlagPole) {
+        int inSufficientMovementCount1 = 0;
+        int inSufficientMovementCount2 = 0;
         for(int i = startIndex; i > startOfFlagPole; i--) {
             boolean inSufficientMovement1 = closingPrices[i] == closingPrices[i- 1];
-//            boolean inSufficientMovement2 = closingPrices[i] == openPrices[i];
             boolean inSufficientMovement2 = lowPrices[i] == highPrices[i];
 
-            if(inSufficientMovement1 || inSufficientMovement2) {
-                inSufficientMovementCount++;
+            if(inSufficientMovement1) {
+                inSufficientMovementCount1++;
             }
 
+            if(inSufficientMovement2) {
+                inSufficientMovementCount2++;
+            }
         }
-        if(inSufficientMovementCount > config.getMaxInsufficientMovementCount()) {
+
+        if(inSufficientMovementCount1 > config.getMaxInsufficientMovementCloseToPrevClose()) {
             return false;
-        } else {
-            return true;
         }
+
+        if(inSufficientMovementCount2 > config.getMaxInsufficientMovementHighToLowCount()) {
+            return false;
+        }
+        return true;
     }
 
     private Account determineLongPositions(List<Flag> flags, StockFA stock) {
@@ -342,8 +349,17 @@ public class FlagStrategy {
      * startIndex
      */
     private FlagTop findBestFlagTop(int startIndex, Symbol symbol) {
-        Map<Integer, Point> max = max(Arrays.copyOfRange(highPrices, 0, startIndex + 1), 3, 3);
-        Map<Integer, Point> min = min(Arrays.copyOfRange(lowPrices, 0, startIndex + 1), 3, 3);
+        Map<Integer, Point> max = max(
+                Arrays.copyOfRange(highPrices, 0, startIndex + 1),
+                config.getMaxExtremaLookBackPeriod(),
+                config.getMaxExtremaLookForwardPeriod()
+                );
+
+        Map<Integer, Point> min = min(
+                Arrays.copyOfRange(lowPrices, 0, startIndex + 1),
+                config.getMinExtremaLookBackPeriod(),
+                config.getMinExtremaLookForwardPeriod()
+        );
 
         Trend top = findTrend(max, startIndex, config.getMinFlagTopLen(), dates, symbol);
         Trend bot = findTrend(min, startIndex, config.getMinFlagTopLen(), dates, symbol);

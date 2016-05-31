@@ -106,6 +106,7 @@ public class StrategyRunner {
             });
         });
 
+        exector.shutdown();
 
         return results;
     }
