@@ -5,7 +5,6 @@ import com.financialanalysis.data.StockPrice;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j;
 import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.Marker;
@@ -21,9 +20,7 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.time.ohlc.OHLCItem;
 import org.jfree.data.time.ohlc.OHLCSeries;
 import org.jfree.data.time.ohlc.OHLCSeriesCollection;
-import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RectangleAnchor;
-import org.jfree.ui.RefineryUtilities;
 import org.joda.time.DateTime;
 
 import java.awt.*;
@@ -35,6 +32,7 @@ import static com.financialanalysis.analysis.AnalysisTools.getDates;
 import static com.financialanalysis.analysis.AnalysisTools.getHighPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getLowPrices;
 import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
+
 
 @Log4j
 public class StockChartCore /*extends ApplicationFrame*/ {

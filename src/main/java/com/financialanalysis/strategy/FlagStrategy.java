@@ -1,7 +1,9 @@
 package com.financialanalysis.strategy;
 
+import com.financialanalysis.analysis.AnalysisBaseFunctions;
 import com.financialanalysis.analysis.AnalysisFunctionResult;
 import com.financialanalysis.analysis.AnalysisFunctions;
+import com.financialanalysis.analysis.AnalysisTools;
 import com.financialanalysis.data.Action;
 import com.financialanalysis.data.StockFA;
 import com.financialanalysis.data.StockPrice;
@@ -25,53 +27,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.financialanalysis.analysis.AnalysisBaseFunctions.findTrend;
-import static com.financialanalysis.analysis.AnalysisBaseFunctions.max;
-import static com.financialanalysis.analysis.AnalysisBaseFunctions.min;
-import static com.financialanalysis.analysis.AnalysisBaseFunctions.sma;
-import static com.financialanalysis.analysis.AnalysisTools.getClosingPrices;
-import static com.financialanalysis.analysis.AnalysisTools.getDates;
-import static com.financialanalysis.analysis.AnalysisTools.getHighPrices;
-import static com.financialanalysis.analysis.AnalysisTools.getLowPrices;
-import static com.financialanalysis.analysis.AnalysisTools.getOpenPrices;
-import static com.financialanalysis.analysis.AnalysisTools.getValidStockPrices;
-import static com.financialanalysis.analysis.AnalysisTools.getVolume;
-import static com.financialanalysis.analysis.AnalysisTools.round;
+import static com.financialanalysis.analysis.AnalysisBaseFunctions.*;
+import static com.financialanalysis.analysis.AnalysisTools.*;
 import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
-public class FlagStrategy extends AbstractStrategy {
-//    // Buy Sell
-//    int flagLookAheadDays = 8;
-//    double percentageMaxTarget = 0.65;
-//    double allowableGapUp = 0.05;
-//
-//    // PVO
-//    int DEFAULT_FAST_PERIOD = 12;
-//    int DEFAULT_SLOW_PERIOD = 26;
-//    int DEFAULT_SIGNAL_PERIOD = 9;
-//
-//    // Flag
-//    double flagPoleSlopeThreshold = 0.0;
-//    double flagPoleRSquareThreshold = 0.8;
-//    double trendBotSlopeThresholdLower = -1.0;
-//    double trendBotSlopeThresholdHigher = 0.0;
-//    double trendTopSlopeThresholdLower = -1.0;
-//    double trendTopSlopeThresholdHigher = 0.0;
-//    double trendRSquareThreshold = 0.8;
-//    double topBotSlopeDifferenceThreshold = 0.03;
-//    int numTopDataPoints = 3;
-//    int numBotDataPoints = 2;
-//
-//    int maxInsufficientMovementCount = 3;
-//
-//    int minFlagTopLen = 5;
-//    int maxFlagTopLen = 30;
-//    int minFlagPoleLen = 5;
-//    int maxFlagPoleLen = 60;
-
-    private FlagConfig config;
-
+public class FlagStrategy {
     //Not configurable
     private static final int MIN_DATA_POINTS = 100;
 
@@ -85,19 +46,20 @@ public class FlagStrategy extends AbstractStrategy {
     private double[] sma;
     private List<StockPrice> validStockPrice;
     private List<DateTime> dates;
+    private FlagConfig config;
 
-    @Override
     @SneakyThrows
-    public StrategyOutput runStrategy(StrategyInput input) {
+    public StrategyOutput runStrategy(FlagStrategyInput input) {
         StockFA stock = input.getStock();
         Symbol symbol = input.getStock().getSymbol();
 
         validStockPrice = getValidStockPrices(stock.getHistory(), input.getStartDate(), input.getEndDate());
+
         if(validStockPrice.isEmpty() || validStockPrice.size() < MIN_DATA_POINTS) {
             return new StrategyOutput(symbol, Account.createDefaultAccount(), new ArrayList<>(), "Flag");
         }
 
-        config = FlagConfig.readFromFile();
+        config = input.getConfig();
 
         closingPrices = getClosingPrices(validStockPrice);
         openPrices = getOpenPrices(validStockPrice);

@@ -1,5 +1,6 @@
 package com.financialanalysis.updater;
 
+import com.financialanalysis.analysis.AnalysisTools;
 import com.financialanalysis.data.DetailedSymbol;
 import com.financialanalysis.data.Symbol;
 import com.financialanalysis.questrade.Questrade;
@@ -55,6 +56,7 @@ public class SymbolPuller {
         List<Symbol> symbols = response.getSymbols().stream().map(DetailedSymbol::convertToSymbol).collect(Collectors.toList());
         addFound(symbols);
 
+        for(Symbol s : symbols) log.info(s.getSymbol() + " " + s.getDescription());
         log.info(String.format("%d/%d", getNumFound(), MAX_SYMBOL_ID));
     }
 

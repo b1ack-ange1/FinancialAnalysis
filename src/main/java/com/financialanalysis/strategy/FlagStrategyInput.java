@@ -4,12 +4,10 @@ import com.financialanalysis.data.StockFA;
 import lombok.Data;
 import org.joda.time.DateTime;
 
-import java.util.List;
-import java.util.Map;
-
 @Data
-public class StrategyInput {
+public class FlagStrategyInput {
     private final StockFA stock;
+    private final FlagConfig config;
     private final DateTime startDate;
     private final DateTime endDate;
 }

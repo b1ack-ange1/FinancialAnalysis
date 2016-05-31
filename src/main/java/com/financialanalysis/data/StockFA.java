@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import lombok.Data;
 import org.joda.time.DateTime;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -23,5 +24,17 @@ public class StockFA {
         }
 
         return history.get(history.size()-1).getDate();
+    }
+
+    public StockFA clone() {
+        List<StockPrice> newHistory = new ArrayList<>(history.size());
+        for(StockPrice s : history) {
+            newHistory.add(s.clone());
+        }
+
+        return new StockFA(
+                symbol.clone(),
+                newHistory
+        );
     }
 }

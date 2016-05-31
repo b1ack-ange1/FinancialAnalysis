@@ -1,21 +1,26 @@
 package com.financialanalysis.analysis;
 
+import com.beust.jcommander.internal.Lists;
 import com.financialanalysis.data.StockPrice;
 import com.financialanalysis.data.Symbol;
+import com.financialanalysis.data.Trend;
+import com.financialanalysis.graphing.Point;
+import lombok.extern.log4j.Log4j;
+import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.joda.time.DateTime;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+@Log4j
 public class AnalysisTools {
-    private static Random random = new Random();
-
     public static double[] getClosingPrices(List<StockPrice> quotes) {
         return quotes.stream().map(q -> q.getClose()).mapToDouble(q -> q).toArray();
     }
@@ -104,6 +109,7 @@ public class AnalysisTools {
     }
 
     public static int randInt(int min, int max) {
+        Random random = new Random();
         int randomNum = random.nextInt((max - min) + 1) + min;
         return randomNum;
     }
@@ -120,7 +126,7 @@ public class AnalysisTools {
      * Given a list of stock prices, return the sublist between start and end dates.
      */
     public static List<StockPrice> getValidStockPrices(List<StockPrice> allPrices, DateTime start, DateTime end) {
-        List<StockPrice> valid = new ArrayList<>();
+        List<StockPrice> valid = Lists.newArrayList();
         for(StockPrice sp : allPrices) {
             DateTime curDate = sp.getDate();
             if(curDate.isAfter(start.minusDays(1)) && curDate.isBefore(end.plusDays(1))) {
@@ -129,6 +135,105 @@ public class AnalysisTools {
         }
 
         return valid;
+    }
+
+    public static Map<Integer, Point> max(double[] input, int lookBack, int lookForward) {
+        Map<Integer, Point> points = new HashMap<>();
+
+        for(int i = lookBack; i < input.length; i++) {
+            double cur = input[i];
+            boolean shouldContinue = false;
+
+            double max = cur;
+            int index = i;
+            //Look back period/2
+            for(int j = i-1; j >= 0 && j >= i - lookBack; j--) {
+                if(input[j] > max) {
+                    shouldContinue = true;
+                    break;
+                }
+            }
+            if(shouldContinue) continue;
+
+            //Look forward period/2
+            for(int j = i+1; j < input.length && j <= i + lookForward; j++) {
+                if(input[j] > max) {
+                    shouldContinue = true;
+                    break;
+                }
+            }
+            if(shouldContinue) continue;
+
+            points.put(index, new Point(index, max));
+        }
+
+        return points;
+    }
+
+    public static Map<Integer, Point> min(double[] input, int lookBack, int lookForward) {
+        Map<Integer, Point> points = new HashMap<>();
+
+        for(int i = lookBack; i < input.length; i++) {
+            double cur = input[i];
+            boolean shouldContinue = false;
+
+            double min = cur;
+            int index = i;
+            //Look back period/2
+            for(int j = i-1; j >= 0 && j >= i - lookBack; j--) {
+                if(input[j] < min) {
+                    shouldContinue = true;
+                    break;
+                }
+            }
+            if(shouldContinue) continue;
+
+            //Look forward period/2
+            for(int j = i+1; j < input.length && j <= i + lookForward; j++) {
+                if(input[j] < min) {
+                    shouldContinue = true;
+                    break;
+                }
+            }
+            if(shouldContinue) continue;
+
+            points.put(index, new Point(index, min));
+        }
+
+        return points;
+    }
+
+    /**
+     * Will look back starting at startIdx, period intervals. If it find an extrema, add it to the
+     * SimpleRegression that constitutes the trend
+     *
+     * points: local min or max extrema as determined by min or max
+     */
+    public static Trend findTrend(Map<Integer, Point> points, int startIdx, int period, List<DateTime> dates, Symbol symbol) {
+        SimpleRegression sr = new SimpleRegression();
+        List<Point> pointsInTrend = new ArrayList<>();
+
+        for(int i = startIdx; i >= 0 && i >= startIdx - period ; i--) {
+            if(points.containsKey(i)) {
+                sr.addData(points.get(i).getX(), points.get(i).getY());
+                pointsInTrend.add(points.get(i));
+            }
+        }
+
+        List<Point> pointsCorrectOrder = com.google.common.collect.Lists.reverse(pointsInTrend);
+        DateTime start = new DateTime();
+        DateTime end  = new DateTime();
+        if(!pointsCorrectOrder.isEmpty()) {
+            if((int) pointsCorrectOrder.get(0).getX() > dates.size()) {
+                log.error("Found invalid case for " + symbol.getSymbol() + "\n" + "Point: " + pointsCorrectOrder.get(0) + " :: Size:" + dates.size());
+            }
+
+            start = dates.get((int) pointsCorrectOrder.get(0).getX());
+            end = dates.get((int) pointsCorrectOrder.get(pointsCorrectOrder.size() - 1).getX());
+        }
+
+        Trend trend = new Trend(sr, pointsCorrectOrder, start, end);
+        return trend;
     }
 }
 

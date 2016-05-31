@@ -1,24 +1,9 @@
 package com.financialanalysis.analysis;
 
-import com.financialanalysis.data.Symbol;
-import com.financialanalysis.data.Trend;
-import com.financialanalysis.graphing.Point;
-import com.google.common.collect.Lists;
 import lombok.extern.log4j.Log4j;
-import org.apache.commons.math3.stat.regression.SimpleRegression;
-import org.joda.time.DateTime;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Log4j
 public class AnalysisBaseFunctions {
-    private static final int NUM_DAYS_WITHOUT_CHANGE_ALLOWED = 5;
-    private static final int NUM_PERIODS_WITHOUT_CHANGE_ALLOWED = 2;
-    private static final int MIN_MONTHS = 6;
-    private static final int DAYS_PER_MONTH = 20;
 
     public static double[] stdDev(double[] input, int period) {
         double[] stdDevArr = new double[input.length];
@@ -59,6 +44,7 @@ public class AnalysisBaseFunctions {
      * EMA = Price(t) * k + EMA(y) * (1 – k)
      * t = today, y = yesterday, N = number of days in EMA, k = 2/(N+1)
      */
+    // This may not be thread safe
     public static double[] ema(double[] input, int period) {
         double[] ema = new double[input.length];
         double k = 2.0/(period + 1);
@@ -152,133 +138,6 @@ public class AnalysisBaseFunctions {
         }
 
         return atr;
-    }
-
-    public static Map<Integer, Point> max(double[] input, int lookBack, int lookForward) {
-        Map<Integer, Point> points = new HashMap<>();
-
-        for(int i = lookBack; i < input.length; i++) {
-            double cur = input[i];
-            boolean shouldContinue = false;
-
-            double max = cur;
-            int index = i;
-            //Look back period/2
-            for(int j = i-1; j >= 0 && j >= i - lookBack; j--) {
-                if(input[j] > max) {
-                    shouldContinue = true;
-                    break;
-                }
-            }
-            if(shouldContinue) continue;
-
-            //Look forward period/2
-            for(int j = i+1; j < input.length && j <= i + lookForward; j++) {
-                if(input[j] > max) {
-                    shouldContinue = true;
-                    break;
-                }
-            }
-            if(shouldContinue) continue;
-
-            points.put(index, new Point(index, max));
-        }
-
-        return points;
-    }
-
-    public static Map<Integer, Point> min(double[] input, int lookBack, int lookForward) {
-        Map<Integer, Point> points = new HashMap<>();
-
-        for(int i = lookBack; i < input.length; i++) {
-            double cur = input[i];
-            boolean shouldContinue = false;
-
-            double min = cur;
-            int index = i;
-            //Look back period/2
-            for(int j = i-1; j >= 0 && j >= i - lookBack; j--) {
-                if(input[j] < min) {
-                    shouldContinue = true;
-                    break;
-                }
-            }
-            if(shouldContinue) continue;
-
-            //Look forward period/2
-            for(int j = i+1; j < input.length && j <= i + lookForward; j++) {
-                if(input[j] < min) {
-                    shouldContinue = true;
-                    break;
-                }
-            }
-            if(shouldContinue) continue;
-
-            points.put(index, new Point(index, min));
-        }
-
-        return points;
-    }
-
-    /**
-     * Will look back starting at startIdx, period intervals. If it find an extrma, add it to the
-     * SimpleRegression that constitutes the trend
-     *
-     * points: min or max extrma as determined by min or max
-     */
-    public static Trend findTrend(Map<Integer, Point> points, int startIdx, int period, List<DateTime> dates, Symbol symbol) {
-        SimpleRegression sr = new SimpleRegression();
-        List<Point> pointsInTrend = new ArrayList<>();
-
-        for(int i = startIdx; i >= 0 && i >= startIdx - period ; i--) {
-            if(points.containsKey(i)) {
-                sr.addData(points.get(i).getX(), points.get(i).getY());
-                pointsInTrend.add(points.get(i));
-            }
-        }
-
-        List<Point> pointsCorrectOrder = Lists.reverse(pointsInTrend);
-        DateTime start = new DateTime();
-        DateTime end  = new DateTime();
-        if(!pointsCorrectOrder.isEmpty()) {
-            if((int) pointsCorrectOrder.get(0).getX() > dates.size()) {
-                log.error("Found invalid case for " + symbol.getSymbol()    );
-            }
-
-            start = dates.get((int) pointsCorrectOrder.get(0).getX());
-            end = dates.get((int) pointsCorrectOrder.get(pointsCorrectOrder.size() - 1).getX());
-        }
-
-        Trend trend = new Trend(sr, pointsCorrectOrder, start, end);
-        return trend;
-    }
-
-    public static boolean tradingActivityIsOk(double[] input) {
-        if(input.length < MIN_MONTHS * DAYS_PER_MONTH) {
-            return false;
-        }
-
-        int countDays = 0;
-        int countPeriod = 0;
-        for(int i = 1; i < input.length; i++) {
-            double prev = input[i-1];
-            double cur = input[i];
-
-            if(Math.abs(prev - cur) < 0.00003) {
-                countDays++;
-            }
-
-            if(countDays >= NUM_DAYS_WITHOUT_CHANGE_ALLOWED) {
-                countPeriod++;
-                countDays = 0;
-            }
-
-            if(countPeriod >+ NUM_PERIODS_WITHOUT_CHANGE_ALLOWED) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }
 

@@ -23,4 +23,15 @@ public class StockPrice {
         jsonObject.addProperty("volume", volume);
         return jsonObject.getAsString();
     }
+
+    public StockPrice clone() {
+        return new StockPrice(
+                date,
+                open,
+                low,
+                high,
+                close,
+                volume
+        );
+    }
 }
