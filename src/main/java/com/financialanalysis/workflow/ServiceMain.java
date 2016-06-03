@@ -68,6 +68,11 @@ public class ServiceMain implements Runnable {
         log.info("Starting ServiceMain");
         long start = System.nanoTime();
 
+        if(flagConfig) {
+            FlagConfig.saveDefault();
+            return;
+        }
+
         if(updateStocks || updateSymbols) {
             questrade.authenticate();
         }
@@ -166,6 +171,7 @@ public class ServiceMain implements Runnable {
         }
 
         reporter.generateIndividualAccountSummary(outputs, 2.0);
+//        reporter.generateDetailedAccountSummary(outputs);
         reporter.generateAverageAccountSummary(outputs);
 
         List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());

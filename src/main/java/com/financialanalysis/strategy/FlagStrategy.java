@@ -1,9 +1,7 @@
 package com.financialanalysis.strategy;
 
-import com.financialanalysis.analysis.AnalysisBaseFunctions;
 import com.financialanalysis.analysis.AnalysisFunctionResult;
 import com.financialanalysis.analysis.AnalysisFunctions;
-import com.financialanalysis.analysis.AnalysisTools;
 import com.financialanalysis.data.Action;
 import com.financialanalysis.data.StockFA;
 import com.financialanalysis.data.StockPrice;
@@ -43,6 +41,7 @@ public class FlagStrategy {
     private double[] volume;
     private double[] pvo;
     private double[] pvoSignal;
+    private double[] pvoHist;
     private double[] sma;
     private List<StockPrice> validStockPrice;
     private List<DateTime> dates;
@@ -77,6 +76,7 @@ public class FlagStrategy {
         );
         pvo = pvoResult.getPvo();
         pvoSignal = pvoResult.getPvoSignal();
+        pvoHist = pvoResult.getPvoHist();
 
         if(runStrategies) {
             // Find flag for most recent day
@@ -92,14 +92,15 @@ public class FlagStrategy {
             List<Flag> flagPatterns = findFlagPatterns(stock);
 
             // Given these flags, buy and sell on them
-            Account runAccount = determineLongPositions(flagPatterns, stock);
+            FlagsAndAccount flagsAndAccount = determineLongPositions(flagPatterns, symbol);
 
+            List<Action> activity = flagsAndAccount.getAccount().getActivity();
             // If this stock generated a buy signal, then lets report it
-            if(runAccount.getActivity().size() > 0) {
-                List<StockChart> flagCharts = flagPatterns.stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
-                log.info(stock.getSymbol().getSymbol() + " found " + runAccount.getActivity().size() + " transactions.");
+            if(activity.size() > 0) {
+                List<StockChart> flagCharts = flagsAndAccount.getFlags().stream().map(f -> f.getFlagStockChart()).collect(Collectors.toList());
+                log.info(stock.getSymbol().getSymbol() + " found " + activity.size() + " transactions.");
 
-                return new StrategyOutput(symbol, runAccount, flagCharts, "Flag");
+                return new StrategyOutput(symbol, flagsAndAccount.getAccount(), flagCharts, "Flag");
             }
         }
 
@@ -225,13 +226,15 @@ public class FlagStrategy {
                     "Projected-" + i + "-" + flagPoleLength
             );
             stockChart.addVerticalLine(dates.get(i), "T ", null);
-            stockChart.addHorizontalLine(highsTrendLine.getYForX(i), "Buy/Sell");
+            stockChart.addHorizontalLine(highsTrendLine.getYForX(i), ">>>>>   Buy-" + ((int) (highsTrendLine.getYForX(i) * 100.0)) / 100.0);
+            stockChart.addHorizontalLine(lowsTrendLine.getYForX(i), ">>>>>   Sell-" + ((int) (lowsTrendLine.getYForX(i) * 100.0)) / 100.0);
 
             Flag flag = new Flag(
                     flagTop,
                     flagPole,
                     projectedPriceLine.getYForX(i + flagPoleLength),
                     highsTrendLine.getYForX(i),
+                    lowsTrendLine.getYForX(i),
                     stockChart,
                     projectedPriceLine
             );
@@ -275,73 +278,117 @@ public class FlagStrategy {
         return true;
     }
 
-    private Account determineLongPositions(List<Flag> flags, StockFA stock) {
+    private FlagsAndAccount determineLongPositions(List<Flag> chronoOrderflags, Symbol symbol) {
         Account runAccount = Account.createDefaultAccount();
-        runAccount.setSymbol(stock.getSymbol());
-        for(Flag flag : flags) {
+        runAccount.setSymbol(symbol);
+        List<Flag> flags = Lists.newArrayList();
+
+        //The flag are in chronological order
+        for(Flag flag : chronoOrderflags) {
             DateTime triggerDay = flag.getTriggerDateTime();
             int triggerIndex = dates.indexOf(triggerDay);
             double buySellPrice = flag.getBuySellPrice();
             double maxTargetPrice = flag.getMaxTargetPrice();
             double targetSellPrice = lowPrices[triggerIndex] + (config.getPercentageMaxTarget() * (maxTargetPrice - lowPrices[triggerIndex]));
+            double sellPrice = flag.getSellPrice();
             double lastBuyPrice = -1.0;
             boolean bought = false;
+            boolean activity = false;
 
-            for (int i = triggerIndex + 1; i < closingPrices.length; i++) {
+            // If we have multiple flags, one right after the other, we don't want them to overlap. Therefore,
+            // increase the index i to lastTransactionExists ? lastTransactionIndex + 1 : trigger + 1
+            int startIndex = 0;
+            if(!runAccount.getActivity().isEmpty()) {
+                Action lastAction = runAccount.getActivity().get(runAccount.getActivity().size()-1);
+                DateTime actionDate = lastAction.getDate();
+                startIndex = dates.indexOf(actionDate) + 1;
+            } else {
+                startIndex = triggerIndex + 1;
+            }
+
+            for (int i = startIndex; i < closingPrices.length; i++) {
                 // Check if we are still within period where it is okay to buy
                 if (i <= triggerIndex + config.getFlagLookAheadDays()) {
+                    //Setup all BUY conditions
 
+                    /** GAP (Not used) **/
                     double gapP = (openPrices[i] / closingPrices[i - 1]) - 1;
                     boolean gapIsOkay = false;
                     if (gapP <= config.getAllowableGapUp()) {
                         gapIsOkay = true;
                     }
 
+                    /** PROJECT PRICE LINE (Not used) **/
                     double projectedLinePrice = flag.getProjectPriceLine().getYForX((double) i);
+                    boolean aboveProject = closingPrices[i] > projectedLinePrice;
+
+                    /** VOLUME **/
+                    // We want a volume break out
+                    boolean volume = (pvoHist[i] > config.getMinPvoHist());// && pvoHist[i] > pvoHist[i-1];
+
+                    /** BUYSELL LINE **/
+                    boolean aboveBuySellLine = closingPrices[i] > buySellPrice;
+
+                    /** TARGET PRICE **/
+                    boolean aboveTargetPrice = (openPrices[i] > targetSellPrice) || (closingPrices[i] > targetSellPrice);
 
                     // If we see a buy signal, automatically buy
-                    if (closingPrices[i] > buySellPrice && closingPrices[i] > projectedLinePrice && !bought && gapIsOkay) {
-                        runAccount.buyAll(closingPrices[i], dates.get(i), stock.getSymbol());
+                    if (aboveBuySellLine && volume && !aboveTargetPrice && !bought) {
+                        runAccount.buyAll(closingPrices[i], dates.get(i), symbol);
                         lastBuyPrice = closingPrices[i];
                         bought = true;
+                        activity = true;
                         continue;
                     }
                 }
 
                 // If its open below our bought price, exit immediately
-                if (openPrices[i] < lastBuyPrice) {
-                    runAccount.sellAll(openPrices[i], dates.get(i), stock.getSymbol());
-                }
+//                if (openPrices[i] < lastBuyPrice && bought) {
+//                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
+//                    bought = false;
+//                    activity = true;
+//                }
 
                 //
-                if (openPrices[i] >= closingPrices[i] && closingPrices[i] < lastBuyPrice) {
-                    runAccount.sellAll(lastBuyPrice, dates.get(i), stock.getSymbol());
+                if (/*openPrices[i] >= closingPrices[i] &&*/ closingPrices[i] <= sellPrice && bought) {
+                    runAccount.sellAll(sellPrice, dates.get(i), symbol);
+                    bought = false;
+                    activity = true;
                 }
 
                 // If there are any profitable sales, sell
                 // or if the closing price drops below the projected price line, sell
-                if (closingPrices[i] > targetSellPrice || closingPrices[i] < flag.getProjectPriceLine().getYForX((double) i)) {
-                    runAccount.sellAll(closingPrices[i], dates.get(i), stock.getSymbol());
+                if (closingPrices[i] > targetSellPrice && bought) {
+                    runAccount.sellAll(closingPrices[i], dates.get(i), symbol);
                     bought = false;
+                    activity = true;
                 }
             }
 
-            StockChart stockChart = flag.getFlagStockChart();
-            stockChart.addHorizontalLine(targetSellPrice, "Target-" + ((int) (targetSellPrice * 100.0)) / 100);
-            stockChart.addXYLine(dates, sma, "100-SMA");
+            // If we have activity on this flag, then lets return it to be stored
+            if(activity) {
+                flags.add(flag);
 
-            if (!runAccount.getActivity().isEmpty()) {
-                stockChart.setGainLoss(String.format("[%.2f%%]", runAccount.getPercentageGainLoss()));
-                stockChart.setNumDays(String.format("%d", runAccount.getDayBetweenFirstAndLastAction()));
+                StockChart stockChart = flag.getFlagStockChart();
+                stockChart.addHorizontalLine(targetSellPrice, ">          Target-" + ((int) (targetSellPrice * 100.0)) / 100.0);
+                stockChart.addXYLine(dates, sma, "100-SMA");
 
-                for (Action action : runAccount.getActivity()) {
-                    int actionIndex = dates.indexOf(action.getDate());
-                    int price = (int) (action.getPrice() * 100.0);
-                    stockChart.addVerticalLine(dates.get(actionIndex), String.format("%.2f", price / 100.0), action);
+                if (!runAccount.getActivity().isEmpty()) {
+                    stockChart.setGainLoss(String.format("[%.2f%%]", runAccount.getPercentageGainLoss()));
+                    stockChart.setNumDays(String.format("%d", runAccount.getDayBetweenFirstAndLastAction()));
+
+                    for (Action action : runAccount.getActivity()) {
+                        int actionIndex = dates.indexOf(action.getDate());
+                        int price = (int) (action.getPrice() * 100.0);
+                        stockChart.addVerticalLine(dates.get(actionIndex), String.format("%.2f", price / 100.0), action);
+                    }
                 }
             }
+
+
         }
-        return runAccount;
+
+        return new FlagsAndAccount(flags, runAccount);
     }
 
     /**
@@ -450,12 +497,19 @@ public class FlagStrategy {
         private final FlagPole flagPole;
         private final double maxTargetPrice;
         private final double buySellPrice;
+        private final double sellPrice;
         private final StockChart flagStockChart;
         private final Line projectPriceLine;
 
         public DateTime getTriggerDateTime() {
             return flagTop.getEnd();
         }
+    }
+
+    @Data
+    private class FlagsAndAccount {
+        private final List<Flag> flags;
+        private final Account account;
     }
 }
 

@@ -33,6 +33,9 @@ public class Main {
     @Parameter(names={"--percentiles", "-p"}, description = "Show percentiles.")
     public static boolean percentiles;
 
+    @Parameter(names={"--flagConfig", "-fc"}, description = "Restore default flag config file.")
+    public static boolean flagConfig;
+
     @Parameter(names={"--help", "-h"})
     public static boolean help;
 

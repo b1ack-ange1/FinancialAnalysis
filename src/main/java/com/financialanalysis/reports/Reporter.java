@@ -34,6 +34,18 @@ public class Reporter {
         return generateIndividualAccountSummary(list);
     }
 
+    public String generateDetailedAccountSummary(List<StrategyOutput> allResults) {
+        StringBuffer buf = new StringBuffer();
+
+        allResults.forEach(output -> {
+            String info = output.getAccount().getAll();
+            buf.append(info + "\n");
+            log.info(info);
+        });
+
+        return buf.toString();
+    }
+
     public String generateAverageAccountSummary(List<StrategyOutput> allResults) {
         List<Account> accounts = allResults.stream().map(StrategyOutput::getAccount).collect(Collectors.toList());
         double gainNotZero = 0;
@@ -42,8 +54,10 @@ public class Reporter {
         double gain = 0;
         double num = 0;
         double posGain = 0;
+        double totalGainLossP = 0.0;
         for(Account account : accounts) {
             double gainLossP = account.getPercentageGainLoss();
+            totalGainLossP += gainLossP;
 
             if(account.getActivity().isEmpty()) continue;
             if(gainLossP > 0) posGain++;
@@ -61,8 +75,9 @@ public class Reporter {
         String a = String.format("Positive Return:                %.2f%%", posGain / num * 100);
         String b = String.format("Gain/Loss Ave:                  %.2f%%", gain/num);
         String c = String.format("Gain/Loss NOT -2%% to 2%% Ave:    %.2f%%", gainNotZero/numNotZero);
-        String d = String.format("Number of meaningful trades:    %.2f%% %d/%d ", numNotZero * 100.0 / num, (int) numNotZero, (int) num);
-        buf.append("\n" + a + "\n" + b + "\n" + c + "\n" + d + "\n");
+        String d = String.format("Total Gain/Loss:                %.2f%%", totalGainLossP);
+        String e = String.format("Number of meaningful trades:    %.2f%% %d/%d ", numNotZero * 100.0 / num, (int) numNotZero, (int) num);
+        buf.append("\n" + a + "\n" + b + "\n" + c + "\n" + d + "\n" + e + "\n");
         log.info(buf.toString());
 
         return buf.toString();

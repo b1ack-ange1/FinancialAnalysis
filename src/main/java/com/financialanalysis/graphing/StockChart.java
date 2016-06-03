@@ -62,7 +62,7 @@ public class StockChart {
     }
 
     private StockChartCore buildStockChartCore() {
-        StockChartCore core = new StockChartCore(title);
+        StockChartCore core = new StockChartCore(title + " " + gainLoss);
         core.setXAxis(xAxis);
         core.setYAxis(yAxis);
         core.setNumDays(numDays);
