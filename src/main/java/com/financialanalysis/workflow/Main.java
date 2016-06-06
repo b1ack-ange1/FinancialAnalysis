@@ -18,6 +18,12 @@ public class Main {
     @Parameter(names={"--backtestStock", "-bs"}, description = "Run a back test on this comma seperated list of stocks.")
     public static String backtestStocks;
 
+    @Parameter(names={"--backtestStart", "-bStart"}, description = "Back test start date")
+    public static String backtestStart;
+
+    @Parameter(names={"--backtestEnd", "-bEnd"}, description = "Back test start end. If empty, use today")
+    public static String backtestEnd;
+
     @Parameter(names={"--updateSymbols", "-usym"}, description = "Update the stored symbols from Questrade.")
     public static boolean updateSymbols;
 

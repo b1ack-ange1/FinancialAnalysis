@@ -32,7 +32,7 @@ import static com.financialanalysis.workflow.Main.*;
 @Log4j
 public class FlagStrategy {
     //Not configurable
-    private static final int MIN_DATA_POINTS = 100;
+    private static final int MIN_DATA_POINTS = 50;
 
     private double[] closingPrices;
     private double[] openPrices;
@@ -303,7 +303,7 @@ public class FlagStrategy {
                 DateTime actionDate = lastAction.getDate();
                 startIndex = dates.indexOf(actionDate) + 1;
             } else {
-                startIndex = triggerIndex + 1;
+                startIndex = triggerIndex;
             }
 
             for (int i = startIndex; i < closingPrices.length; i++) {
@@ -328,13 +328,23 @@ public class FlagStrategy {
 
                     /** BUYSELL LINE **/
                     boolean aboveBuySellLine = closingPrices[i] > buySellPrice;
+                    boolean aboveBuySellLineHigh = highPrices[i] > buySellPrice;
+                    boolean aboveBuySellLineOpen = openPrices[i] > buySellPrice;
 
                     /** TARGET PRICE **/
                     boolean aboveTargetPrice = (openPrices[i] > targetSellPrice) || (closingPrices[i] > targetSellPrice);
 
                     // If we see a buy signal, automatically buy
-                    if (aboveBuySellLine && volume && !aboveTargetPrice && !bought) {
-                        runAccount.buyAll(closingPrices[i], dates.get(i), symbol);
+                    if (!aboveBuySellLineOpen && aboveBuySellLineHigh && aboveBuySellLine && volume && !aboveTargetPrice && !bought) {
+                        runAccount.buyAll(buySellPrice, dates.get(i), symbol);
+                        lastBuyPrice = closingPrices[i];
+                        bought = true;
+                        activity = true;
+                        continue;
+                    }
+
+                    if (aboveBuySellLineOpen && volume && !aboveTargetPrice && !bought) {
+                        runAccount.buyAll(openPrices[i], dates.get(i), symbol);
                         lastBuyPrice = closingPrices[i];
                         bought = true;
                         activity = true;
@@ -349,17 +359,45 @@ public class FlagStrategy {
 //                    activity = true;
 //                }
 
-                //
-                if (/*openPrices[i] >= closingPrices[i] &&*/ closingPrices[i] <= sellPrice && bought) {
+//                if (/*openPrices[i] >= closingPrices[i] &&*/ closingPrices[i] <= sellPrice && bought) {
+//                    runAccount.sellAll(sellPrice, dates.get(i), symbol);
+//                    bought = false;
+//                    activity = true;
+//                }
+
+                // If we go below the sellPrice, sell it.
+                // Case 1: Open above the sell line and drop below. Sell at sell line
+                // Case 2: Open below sell line. Sell at open
+
+                // Case 1:
+                if(((openPrices[i] > sellPrice && closingPrices[i] < sellPrice) ||
+                        (openPrices[i] > sellPrice && closingPrices[i] > sellPrice && lowPrices[i] < sellPrice)) &&
+                        bought) {
                     runAccount.sellAll(sellPrice, dates.get(i), symbol);
                     bought = false;
                     activity = true;
                 }
 
-                // If there are any profitable sales, sell
-                // or if the closing price drops below the projected price line, sell
-                if (closingPrices[i] > targetSellPrice && bought) {
-                    runAccount.sellAll(closingPrices[i], dates.get(i), symbol);
+                // Case 2:
+                if(openPrices[i] < sellPrice && bought) {
+                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
+                    bought = false;
+                    activity = true;
+                }
+
+                //If we open below target and close below target, sell at target OR
+                //if the high price hits target, sell at target
+                if(((openPrices[i] < targetSellPrice && closingPrices[i] > targetSellPrice) ||
+                        (openPrices[i] < targetSellPrice && closingPrices[i] < targetSellPrice && highPrices[i] > targetSellPrice)) &&
+                        bought) {
+                    runAccount.sellAll(targetSellPrice, dates.get(i), symbol);
+                    bought = false;
+                    activity = true;
+                }
+
+                // If we open above the targetSellPrice, then sell at open
+                if(openPrices[i] > targetSellPrice && bought) {
+                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
                     bought = false;
                     activity = true;
                 }

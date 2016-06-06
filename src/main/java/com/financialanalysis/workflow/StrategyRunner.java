@@ -9,6 +9,7 @@ import com.financialanalysis.strategy.FlagConfig;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.strategy.FlagStrategyInput;
 import com.financialanalysis.strategy.FlagStrategy;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -34,13 +35,13 @@ public class StrategyRunner {
     private final SymbolStore symbolStore;
     private final StockStore stockStore;
 
-//    private final DateTime start = DEFAULT_START_DATE;
-    private final DateTime backTestStartDate = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+    private final DateTime startDefault = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
     private final DateTime runStrategiesStartDate = DateTimeUtils.getToday().minusDays(200);
-    private final DateTime end = DateTimeUtils.getToday();
+    private final DateTime today = DateTimeUtils.getToday();
+    private final int MAX_BATCH_SIZE = 100;
+
     private final ExecutorService exector;
     private final FlagConfig config;
-    private final int MAX_BATCH_SIZE = 100;
 
     @Inject
     public StrategyRunner(SymbolStore symbolStore, StockStore stockStore) {
@@ -112,30 +113,37 @@ public class StrategyRunner {
     }
 
     private Future<StrategyOutput> runStockFuture(StockFA stock) {
-        DateTime start;
-        if(runStrategies) {
-            start = runStrategiesStartDate;
-        } else {
-            start = backTestStartDate;
-        }
-
-        FlagStrategyInput input = new FlagStrategyInput(stock, config, start, end);
+        FlagStrategyInput input = getFlagStrategyInput(stock);
         FlagStrategy flagStrategy = new FlagStrategy();
-
         return exector.submit(() -> flagStrategy.runStrategy(input));
     }
 
     private StrategyOutput runStock(StockFA stock) {
+        FlagStrategyInput input = getFlagStrategyInput(stock);
+        FlagStrategy flagStrategy = new FlagStrategy();
+        return flagStrategy.runStrategy(input);
+    }
+
+    private FlagStrategyInput getFlagStrategyInput(StockFA stock) {
         DateTime start;
+        DateTime end;
         if(runStrategies) {
             start = runStrategiesStartDate;
+            end = today;
         } else {
-            start = backTestStartDate;
+
+            if(!Strings.isNullOrEmpty(backtestStart)) {
+                start = new DateTime(backtestStart, DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+            } else {
+                start = startDefault;
+            }
+
+            if(!Strings.isNullOrEmpty(backtestEnd)) {
+                end = new DateTime(backtestEnd, DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+            } else {
+                end = today;
+            }
         }
-
-        FlagStrategyInput input = new FlagStrategyInput(stock, config, start, end);
-        FlagStrategy flagStrategy = new FlagStrategy();
-
-        return flagStrategy.runStrategy(input);
+        return new FlagStrategyInput(stock, config, start, end);
     }
 }

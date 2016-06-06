@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class StockPuller {
     private final QuestradeImpl questrade;
 
-    public static DateTime DEFAULT_START_DATE = new DateTime("2014-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+    public static DateTime DEFAULT_START_DATE = new DateTime("2008-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
 
     @Inject
     public StockPuller(QuestradeImpl questradeImpl) {
