@@ -291,7 +291,6 @@ public class FlagStrategy {
             double maxTargetPrice = flag.getMaxTargetPrice();
             double targetSellPrice = lowPrices[triggerIndex] + (config.getPercentageMaxTarget() * (maxTargetPrice - lowPrices[triggerIndex]));
             double sellPrice = flag.getSellPrice();
-            double lastBuyPrice = -1.0;
             boolean bought = false;
             boolean activity = false;
 
@@ -327,80 +326,122 @@ public class FlagStrategy {
                     boolean volume = (pvoHist[i] > config.getMinPvoHist());// && pvoHist[i] > pvoHist[i-1];
 
                     /** BUYSELL LINE **/
-                    boolean aboveBuySellLine = closingPrices[i] > buySellPrice;
+                    boolean aboveBuySellLineClose = closingPrices[i] > buySellPrice;
                     boolean aboveBuySellLineHigh = highPrices[i] > buySellPrice;
                     boolean aboveBuySellLineOpen = openPrices[i] > buySellPrice;
 
                     /** TARGET PRICE **/
                     boolean aboveTargetPrice = (openPrices[i] > targetSellPrice) || (closingPrices[i] > targetSellPrice);
 
-                    // If we see a buy signal, automatically buy
-                    if (!aboveBuySellLineOpen && aboveBuySellLineHigh && aboveBuySellLine && volume && !aboveTargetPrice && !bought) {
+                    // Case 1
+                    if(!aboveBuySellLineOpen && aboveBuySellLineClose && volume && !aboveTargetPrice && !bought) {
                         runAccount.buyAll(buySellPrice, dates.get(i), symbol);
-                        lastBuyPrice = closingPrices[i];
                         bought = true;
                         activity = true;
                         continue;
                     }
 
-                    if (aboveBuySellLineOpen && volume && !aboveTargetPrice && !bought) {
+                    // Case 2
+                    if(aboveBuySellLineOpen && volume && !aboveTargetPrice && !bought) {
                         runAccount.buyAll(openPrices[i], dates.get(i), symbol);
-                        lastBuyPrice = closingPrices[i];
+                        bought = true;
+                        activity = true;
+                        continue;
+                    }
+
+                    // Case 3
+                    if(!aboveBuySellLineOpen && aboveBuySellLineHigh && !aboveBuySellLineClose && volume && !aboveTargetPrice && !bought){
+                        runAccount.buyAll(buySellPrice, dates.get(i), symbol);
                         bought = true;
                         activity = true;
                         continue;
                     }
                 }
-
-                // If its open below our bought price, exit immediately
-//                if (openPrices[i] < lastBuyPrice && bought) {
-//                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
-//                    bought = false;
-//                    activity = true;
-//                }
-
-//                if (/*openPrices[i] >= closingPrices[i] &&*/ closingPrices[i] <= sellPrice && bought) {
-//                    runAccount.sellAll(sellPrice, dates.get(i), symbol);
-//                    bought = false;
-//                    activity = true;
-//                }
 
                 // If we go below the sellPrice, sell it.
                 // Case 1: Open above the sell line and drop below. Sell at sell line
                 // Case 2: Open below sell line. Sell at open
 
-                // Case 1:
-                if(((openPrices[i] > sellPrice && closingPrices[i] < sellPrice) ||
-                        (openPrices[i] > sellPrice && closingPrices[i] > sellPrice && lowPrices[i] < sellPrice)) &&
-                        bought) {
+                boolean aboveSellLineClose = closingPrices[i] > sellPrice;
+                boolean aboveSellLineLow = lowPrices[i] > sellPrice;
+                boolean aboveSellLineOpen = openPrices[i] > sellPrice;
+                // SELL FAIL SAFE
+                // Case 1
+                if(aboveSellLineOpen && !aboveSellLineClose && bought) {
                     runAccount.sellAll(sellPrice, dates.get(i), symbol);
                     bought = false;
                     activity = true;
                 }
 
-                // Case 2:
-                if(openPrices[i] < sellPrice && bought) {
+                // Case 2
+                if(aboveSellLineOpen && !aboveSellLineLow && aboveSellLineClose && bought) {
+                    runAccount.sellAll(sellPrice, dates.get(i), symbol);
+                    bought = false;
+                    activity = true;
+                }
+
+                if(!aboveSellLineOpen && bought) {
                     runAccount.sellAll(openPrices[i], dates.get(i), symbol);
                     bought = false;
                     activity = true;
                 }
 
-                //If we open below target and close below target, sell at target OR
-                //if the high price hits target, sell at target
-                if(((openPrices[i] < targetSellPrice && closingPrices[i] > targetSellPrice) ||
-                        (openPrices[i] < targetSellPrice && closingPrices[i] < targetSellPrice && highPrices[i] > targetSellPrice)) &&
-                        bought) {
+                // SELL SUCCESS
+                boolean aboveTargetClose = closingPrices[i] > targetSellPrice;
+                boolean aboveTargetHigh = highPrices[i] > targetSellPrice;
+                boolean aboveTargetOpen = openPrices[i] > targetSellPrice;
+
+                // Case 1
+                if(!aboveTargetOpen && aboveTargetClose && bought) {
                     runAccount.sellAll(targetSellPrice, dates.get(i), symbol);
                     bought = false;
                     activity = true;
                 }
 
-                // If we open above the targetSellPrice, then sell at open
-                if(openPrices[i] > targetSellPrice && bought) {
-                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
+                // Case 2
+                if(!aboveTargetOpen && aboveTargetHigh && !aboveTargetClose && bought) {
+                    runAccount.sellAll(targetSellPrice, dates.get(i), symbol);
                     bought = false;
                     activity = true;
                 }
+
+                // Case 3
+                if(aboveTargetOpen && bought) {
+                    runAccount.sellAll(openPrices[i ], dates.get(i), symbol);
+                    bought = false;
+                    activity = true;
+                }
+
+//                // Case 1:
+//                if(((openPrices[i] > sellPrice && closingPrices[i] < sellPrice) ||
+//                        (openPrices[i] > sellPrice && closingPrices[i] > sellPrice && lowPrices[i] < sellPrice)) &&
+//                        bought) {
+//
+//                }
+//
+//                // Case 2:
+//                if(openPrices[i] < sellPrice && bought) {
+//                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
+//                    bought = false;
+//                    activity = true;
+//                }
+//
+//                //If we open below target and close below target, sell at target OR
+//                //if the high price hits target, sell at target
+//                if(((openPrices[i] < targetSellPrice && closingPrices[i] > targetSellPrice) ||
+//                        (openPrices[i] < targetSellPrice && closingPrices[i] < targetSellPrice && highPrices[i] > targetSellPrice)) &&
+//                        bought) {
+//                    runAccount.sellAll(targetSellPrice, dates.get(i), symbol);
+//                    bought = false;
+//                    activity = true;
+//                }
+//
+//                // If we open above the targetSellPrice, then sell at open
+//                if(openPrices[i] > targetSellPrice && bought) {
+//                    runAccount.sellAll(openPrices[i], dates.get(i), symbol);
+//                    bought = false;
+//                    activity = true;
+//                }
             }
 
             // If we have activity on this flag, then lets return it to be stored

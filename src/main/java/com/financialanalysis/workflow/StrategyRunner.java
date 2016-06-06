@@ -127,11 +127,12 @@ public class StrategyRunner {
     private FlagStrategyInput getFlagStrategyInput(StockFA stock) {
         DateTime start;
         DateTime end;
+        // If we are runStrategies, then just return default start and end
         if(runStrategies) {
             start = runStrategiesStartDate;
             end = today;
         } else {
-
+            // If backtest start or end exists, use those
             if(!Strings.isNullOrEmpty(backtestStart)) {
                 start = new DateTime(backtestStart, DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
             } else {
