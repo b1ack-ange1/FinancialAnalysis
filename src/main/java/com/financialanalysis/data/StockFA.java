@@ -3,6 +3,7 @@ package com.financialanalysis.data;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Data;
+import lombok.Setter;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
@@ -32,9 +33,6 @@ public class StockFA {
             newHistory.add(s.clone());
         }
 
-        return new StockFA(
-                symbol.clone(),
-                newHistory
-        );
+        return new StockFA(symbol.clone(), newHistory);
     }
 }

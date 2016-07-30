@@ -5,7 +5,9 @@ import com.financialanalysis.graphing.LineChart;
 import com.financialanalysis.strategy.StrategyOutput;
 import lombok.extern.log4j.Log4j;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Log4j
@@ -139,6 +141,21 @@ public class Reporter {
         lineChart.setXAxis("Percentage Gain/Loss");
         lineChart.setYAxis("%");
         lineChart.addXYLine(x, y, "Percentage Gain/Loss");
+        lineChart.render();
+    }
+
+    public void generateGLvsWeight(List<StrategyOutput> allResults) {
+        List<Account> accounts = allResults.stream().map(StrategyOutput::getAccount).collect(Collectors.toList());
+        Map<Double, Double> result = new HashMap<>();
+
+        for(Account account : accounts) {
+            result.put(account.getAverageWeight(), account.getPercentageGainLoss());
+        }
+
+        LineChart lineChart = new LineChart("Gain Loss vs Weight");
+        lineChart.setXAxis("Weight");
+        lineChart.setYAxis("Gain Loss %");
+        lineChart.addXYLine(result, "Gain Loss vs Weight");
         lineChart.render();
     }
 }

@@ -42,14 +42,18 @@ public class Account {
     }
 
     public void buyAll(double askPrice, DateTime date, Symbol symbol) {
-        buy( (cashBalance - DEFAULT_COMMISSION_FEE)/askPrice, askPrice, date, symbol);
+        buy((cashBalance - DEFAULT_COMMISSION_FEE)/askPrice, askPrice, date, symbol, 0);
+    }
+
+    public void buyAll(double askPrice, DateTime date, Symbol symbol, double weight) {
+        buy((cashBalance - DEFAULT_COMMISSION_FEE) / askPrice, askPrice, date, symbol, weight);
     }
 
     public void sellAll(double bidPrice, DateTime date, Symbol symbol) {
         sell(numShares, bidPrice, date, symbol);
     }
 
-    public void buy(double numSharesToBuy, double askPrice, DateTime date, Symbol symbol) {
+    public void buy(double numSharesToBuy, double askPrice, DateTime date, Symbol symbol, double weight) {
         if(numSharesToBuy > 0) {
             double cost = (numSharesToBuy * askPrice) + DEFAULT_COMMISSION_FEE;
             if(cost <= cashBalance) {
@@ -59,7 +63,7 @@ public class Account {
                 cashBalance -= cost;
                 totalBalance = cost + cashBalance;
                 rebalance(askPrice);
-                activity.add(new Action("buy", numSharesToBuy * askPrice, numSharesToBuy, askPrice, date, symbol));
+                activity.add(new Action("buy", numSharesToBuy * askPrice, numSharesToBuy, askPrice, date, symbol, weight));
                 numBuys++;
             }
         }
@@ -74,7 +78,7 @@ public class Account {
             cashBalance += earning;
             totalBalance = earning + cashBalance;
             rebalance(bidPrice);
-            activity.add(new Action("sell", numShareToSell * bidPrice, numShareToSell, bidPrice, date, symbol));
+            activity.add(new Action("sell", numShareToSell * bidPrice, numShareToSell, bidPrice, date, symbol, 0));
             numSells++;
         }
     }
@@ -108,37 +112,37 @@ public class Account {
         return gson.toJson(this);
     }
 
+    public double getAverageWeight() {
+        double aveWeight = 0;
+        double num = 0;
+        for(Action action : activity) {
+            if(action.getWeight() != 0.0) {
+                aveWeight += action.getWeight();
+                num++;
+            }
+        }
+        aveWeight = aveWeight / num;
+        return aveWeight;
+    }
+
     public String getSummary() {
         StringBuilder builder = new StringBuilder();
         builder.append("\n----------------------------\n");
         builder.append(String.format("Initial Balance     : %8.2f\n", initialBalance));
         builder.append(String.format("Cash Balance        : %8.2f\n", cashBalance));
         builder.append(String.format("Total Balance       : %8.2f\n", totalBalance));
-        builder.append(String.format("Number Shares       : %8.2f\n", numShares));
         builder.append(String.format("Percentage Gain/Loss: %8.2f%%\n", percentageGainLoss));
-        builder.append(String.format("Number Buys         : %8d\n", numBuys));
-        builder.append(String.format("Number Sells        : %8d\n", numSells));
         builder.append(String.format("Number Trades       : %8d\n", numTrades));
-        builder.append(String.format("Commission Paid     : %8d\n", numTrades *DEFAULT_COMMISSION_FEE));
+        builder.append(String.format("Ave Weight          : %8.4f\n", getAverageWeight()));
         builder.append(String.format("Symbol              : %8s\n", symbol));
         return builder.toString();
     }
 
     public String getAll() {
         StringBuilder builder = new StringBuilder();
-        builder.append("\n----------------------------\n");
-        builder.append(String.format("Initial Balance     : %8.2f\n", initialBalance));
-        builder.append(String.format("Cash Balance        : %8.2f\n", cashBalance));
-        builder.append(String.format("Total Balance       : %8.2f\n", totalBalance));
-        builder.append(String.format("Number Shares       : %8.2f\n", numShares));
-        builder.append(String.format("Percentage Gain/Loss: %8.2f%%\n", percentageGainLoss));
-        builder.append(String.format("Number Buys         : %8d\n", numBuys));
-        builder.append(String.format("Number Sells        : %8d\n", numSells));
-        builder.append(String.format("Number Trades       : %8d\n", numTrades));
-        builder.append(String.format("Commission Paid     : %8d\n", numTrades *DEFAULT_COMMISSION_FEE));
-        builder.append(String.format("Symbol              : %8s\n", symbol));
+        builder.append(getSummary());
 
-        builder.append("Account Summary:\n");
+        builder.append("Actions:\n");
         List<Action> actions = cloneList(activity);
         Collections.sort(actions, (c1, c2) -> c1.getDate().isBefore(c2.getDate()) ? -1 : 1);
         for(Action action : actions) {
@@ -147,6 +151,7 @@ public class Account {
             builder.append(String.format("  Amount: %8.2f\n", action.getAmount()));
             builder.append(String.format("  Shares: %8.2f\n", action.getShares()));
             builder.append(String.format("  Price : %8.2f\n", action.getPrice()));
+            builder.append(String.format("  Weight: %8.4f\n", action.getWeight()));
             builder.append(String.format("  Date  : %s\n", action.getDate().toString().split("T")[0]));
             builder.append("----------------------------\n");
         }

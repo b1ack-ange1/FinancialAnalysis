@@ -11,17 +11,9 @@ public class Action {
     private final double price;
     private final DateTime date;
     private final Symbol symbol;
-
-    public Action(String action, double amount, double shares, double price, DateTime date, Symbol symbol) {
-        this.action = action;
-        this.amount = amount;
-        this.shares = shares;
-        this.price = price;
-        this.date = date;
-        this.symbol = symbol;
-    }
+    private final double weight;
 
     public Action clone() {
-        return new Action(action, amount, shares, price, date, symbol);
+        return new Action(action, amount, shares, price, date, symbol, weight);
     }
 }

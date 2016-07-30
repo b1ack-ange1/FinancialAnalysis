@@ -9,6 +9,9 @@ import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
 
+import java.util.Map;
+import java.util.Set;
+
 public class LineChart extends ApplicationFrame {
     private final String title;
 
@@ -27,6 +30,17 @@ public class LineChart extends ApplicationFrame {
 
         for(int i = 0; i < x.length; i++) {
             series.add(x[i], y[i]);
+        }
+
+        xYDataSet.addSeries(series);
+    }
+
+    public void addXYLine(Map<Double, Double> data, String name) {
+        XYSeries series = new XYSeries(name);
+
+        Set<Double> keys = data.keySet();
+        for(Double key : keys) {
+            series.add(key, data.get(key));
         }
 
         xYDataSet.addSeries(series);

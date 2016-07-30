@@ -2,6 +2,7 @@ package com.financialanalysis.workflow;
 
 import com.financialanalysis.common.DateTimeUtils;
 import com.financialanalysis.data.StockFA;
+import com.financialanalysis.data.StockPrice;
 import com.financialanalysis.data.Symbol;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
@@ -9,6 +10,9 @@ import com.financialanalysis.strategy.FlagConfig;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.strategy.FlagStrategyInput;
 import com.financialanalysis.strategy.FlagStrategy;
+import com.financialanalysis.strategyV2.Strategy;
+import com.financialanalysis.strategyV2.StrategyInput;
+import com.financialanalysis.strategyV2.macd.MacdStrategy;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
@@ -19,6 +23,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static com.financialanalysis.analysis.AnalysisTools.getValidStockPrices;
 import static com.financialanalysis.workflow.Main.*;
 
 @Log4j
@@ -34,6 +40,7 @@ import static com.financialanalysis.workflow.Main.*;
 public class StrategyRunner {
     private final SymbolStore symbolStore;
     private final StockStore stockStore;
+    private final MacdStrategy macdStrategy;
 
     private final DateTime startDefault = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
     private final DateTime runStrategiesStartDate = DateTimeUtils.getToday().minusDays(200);
@@ -44,9 +51,11 @@ public class StrategyRunner {
     private final FlagConfig config;
 
     @Inject
-    public StrategyRunner(SymbolStore symbolStore, StockStore stockStore) {
+    public StrategyRunner(SymbolStore symbolStore, StockStore stockStore, MacdStrategy macdStrategy) {
         this.symbolStore = symbolStore;
         this.stockStore = stockStore;
+        this.macdStrategy = macdStrategy;
+
         this.exector = Executors.newFixedThreadPool(10);
         this.config = FlagConfig.readFromFile();
     }
@@ -61,7 +70,7 @@ public class StrategyRunner {
         List<StrategyOutput> results = new LinkedList<>();
 
         stocks.forEach(s -> {
-            StrategyOutput output = runStock(s);
+            StrategyOutput output = runStockV2(s);
             if(!output.isEmpty()) {
                 results.add(output);
             }
@@ -90,7 +99,7 @@ public class StrategyRunner {
 
             // For each stock, submit it to the exector
             stocks.forEach(s -> {
-                futures.add(runStockFuture(s));
+                futures.add(runStockFutureV2(s));
             });
 
             futures.forEach(f -> {
@@ -108,8 +117,66 @@ public class StrategyRunner {
         });
 
         exector.shutdown();
-
         return results;
+    }
+
+    private StrategyOutput runStockV2(StockFA stock) {
+        Map<Strategy, StrategyOutput> map = new HashMap<>();
+        DateTime start = getStartDate();
+        DateTime end = getEndDate();
+        List<StockPrice> stockPrices = getValidStockPrices(stock.getHistory(), start, end);
+        StockFA filteredStock = new StockFA(stock.getSymbol(), stockPrices);
+
+        StrategyInput macdInput = new StrategyInput(filteredStock);
+        StrategyOutput macdOutput = macdStrategy.run(macdInput);
+        map.put(macdStrategy, macdOutput);
+
+        return macdOutput;
+    }
+
+    private Future<StrategyOutput> runStockFutureV2(StockFA stock) {
+        DateTime start = getStartDate();
+        DateTime end = getEndDate();
+        List<StockPrice> stockPrices = getValidStockPrices(stock.getHistory(), start, end);
+        StockFA filteredStock = new StockFA(stock.getSymbol(), stockPrices);
+
+        StrategyInput macdInput = new StrategyInput(filteredStock);
+
+        return exector.submit(() -> macdStrategy.run(macdInput));
+    }
+
+    private DateTime getStartDate() {
+        DateTime start;
+        // If we are runStrategies, then just return default start and end
+        if(runStrategies) {
+            start = runStrategiesStartDate;
+        } else {
+            // If backtest start or end exists, use those
+            if(!Strings.isNullOrEmpty(backtestStart)) {
+                start = new DateTime(backtestStart, DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+            } else {
+                start = startDefault;
+            }
+        }
+
+        return start;
+    }
+
+    private DateTime getEndDate() {
+        DateTime end;
+        // If we are runStrategies, then just return default start and end
+        if(runStrategies) {
+            end = today;
+        } else {
+            // If backtest start or end exists, use those
+            if(!Strings.isNullOrEmpty(backtestEnd)) {
+                end = new DateTime(backtestEnd, DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
+            } else {
+                end = today;
+            }
+        }
+
+        return end;
     }
 
     private Future<StrategyOutput> runStockFuture(StockFA stock) {

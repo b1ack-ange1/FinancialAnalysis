@@ -2,10 +2,14 @@ package com.financialanalysis.workflow;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.internal.Lists;
 import com.financialanalysis.guice.FAModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import lombok.extern.log4j.Log4j;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Log4j
 public class Main {
@@ -38,6 +42,12 @@ public class Main {
 
     @Parameter(names={"--percentiles", "-p"}, description = "Show percentiles.")
     public static boolean percentiles;
+
+    @Parameter(names={"-d"}, description = "Show summary report for each trade.")
+    public static boolean detailedSummary;
+
+    @Parameter(names={"-dd"}, description = "Show entire report for each trade.")
+    public static boolean detailedEntire;
 
     @Parameter(names={"--flagConfig", "-fc"}, description = "Restore default flag config file.")
     public static boolean flagConfig;

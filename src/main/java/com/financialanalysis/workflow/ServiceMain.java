@@ -112,14 +112,7 @@ public class ServiceMain implements Runnable {
         List<StrategyOutput> outputs = strategyRunner.run();
         List<Report> reports = reporter.generateReports(outputs);
 
-        if(saveCharts) {
-            chartStore.saveBackTestCharts(reports);
-        }
-        if(percentiles) {
-            reporter.generatePercentilesChart(outputs);
-        }
-
-        reporter.generateAverageAccountSummary(outputs);
+        doReportingForBacktest(outputs, reports);
 
         List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
         log.info(String.join(",", symbolNames));
@@ -140,16 +133,7 @@ public class ServiceMain implements Runnable {
         } while(outputs.size() < numFound);
 
         List<Report> reports = reporter.generateReports(outputs);
-
-        if(saveCharts) {
-            chartStore.saveBackTestCharts(reports);
-        }
-        if(percentiles) {
-            reporter.generatePercentilesChart(outputs);
-        }
-
-        reporter.generateIndividualAccountSummary(outputs);
-        reporter.generateAverageAccountSummary(outputs);
+        doReportingForBacktest(outputs, reports);
         log.info(buf.toString());
     }
 
@@ -158,24 +142,30 @@ public class ServiceMain implements Runnable {
         List<Symbol> symbols = symbolStore.load(inputSymbols);
 
         List<StockFA> stocks = Lists.newArrayList(stockStore.load(symbols).values());
-        List<StrategyOutput> outputs = Lists.newArrayList();
-        outputs.addAll(strategyRunner.runOnStocks(stocks));
+        List<StrategyOutput> outputs = Lists.newArrayList(strategyRunner.runOnStocks(stocks));
 
         List<Report> reports = reporter.generateReports(outputs);
+        doReportingForBacktest(outputs, reports);
 
+        List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
+        log.info(String.join(",", symbolNames));
+        log.info("Stocks Num: " + symbolNames.size());
+    }
+
+    private void doReportingForBacktest(List<StrategyOutput> outputs, List<Report> reports) {
         if(saveCharts) {
             chartStore.saveBackTestCharts(reports);
         }
         if(percentiles) {
             reporter.generatePercentilesChart(outputs);
         }
-
-        reporter.generateIndividualAccountSummary(outputs, 2.0);
-//        reporter.generateDetailedAccountSummary(outputs);
+        if(detailedSummary) {
+            reporter.generateIndividualAccountSummary(outputs);
+        }
+        if(detailedEntire) {
+            reporter.generateDetailedAccountSummary(outputs);
+        }
         reporter.generateAverageAccountSummary(outputs);
-
-        List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
-        log.info(String.join(",", symbolNames));
-        log.info("Stocks Num: " + symbolNames.size());
+        reporter.generateGLvsWeight(outputs);
     }
 }

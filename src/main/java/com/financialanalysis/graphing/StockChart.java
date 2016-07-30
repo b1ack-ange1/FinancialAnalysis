@@ -40,6 +40,9 @@ public class StockChart {
     public void addVerticalLine(DateTime x, String name, Action action) {
         verticalLineList.add(new VerticalLine(x, name, action));
     }
+    public void addAction(Action action) {
+        verticalLineList.add(new VerticalLine(action.getDate(), action.getAction() + "_" + action.getPrice(), action));
+    }
 
     private List<HorizontalLine> horizontalLineList = new LinkedList<>();
     public void addHorizontalLine(double y, String label) {

@@ -15,6 +15,6 @@ public class StrategyOutput {
     private final String strategyName;
 
     public boolean isEmpty() {
-        return charts.isEmpty();
+        return account.getActivity().isEmpty();
     }
 }

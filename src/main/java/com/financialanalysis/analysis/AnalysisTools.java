@@ -108,6 +108,22 @@ public class AnalysisTools {
         return res;
     }
 
+    public static double ave(double[] a) {
+        double sum = 0;
+        for(double d : a) {
+            sum += d;
+        }
+        return sum / a.length;
+    }
+
+    public static double[] addConst(double[] a, double s) {
+        double[] n = new double[a.length];
+        for(int i = 0; i < a.length; i++) {
+            n[i] = a[i] + s;
+        }
+        return n;
+    }
+
     public static int randInt(int min, int max) {
         Random random = new Random();
         int randomNum = random.nextInt((max - min) + 1) + min;

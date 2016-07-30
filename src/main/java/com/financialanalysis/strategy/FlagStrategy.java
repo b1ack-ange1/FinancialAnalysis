@@ -43,6 +43,7 @@ public class FlagStrategy {
     private double[] pvoSignal;
     private double[] pvoHist;
     private double[] sma;
+    private double[] zigzag;
     private List<StockPrice> validStockPrice;
     private List<DateTime> dates;
     private FlagConfig config;
@@ -78,11 +79,18 @@ public class FlagStrategy {
         pvoSignal = pvoResult.getPvoSignal();
         pvoHist = pvoResult.getPvoHist();
 
+        AnalysisFunctionResult zigzagResult = AnalysisFunctions.zigzag(closingPrices, config.getZigzagThreshold()
+        );
+        zigzag = zigzagResult.getZigzag();
+
         if(runStrategies) {
             // Find flag for most recent day
             Optional<Flag> flag = findFlagForDay(closingPrices.length - 1, stock);
             if(flag.isPresent()) {
                 log.info(symbol.getSymbol() + " has a flag.");
+                FlagsAndAccount flagsAndAccount = determineLongPositions(Lists.newArrayList(flag.get()), symbol);
+
+
                 return new StrategyOutput(symbol, Account.createDefaultAccount(), Lists.newArrayList(flag.get().getFlagStockChart()), "Flag");
             }
         }
@@ -225,6 +233,7 @@ public class FlagStrategy {
                     projectedPriceLine.generateYValues(i, i + flagPoleLength),
                     "Projected-" + i + "-" + flagPoleLength
             );
+            stockChart.addXYLine(dates, zigzag, "ZigZag");
             stockChart.addVerticalLine(dates.get(i), "T ", null);
             stockChart.addHorizontalLine(highsTrendLine.getYForX(i), ">>>>>   Buy-" + ((int) (highsTrendLine.getYForX(i) * 100.0)) / 100.0);
             stockChart.addHorizontalLine(lowsTrendLine.getYForX(i), ">>>>>   Sell-" + ((int) (lowsTrendLine.getYForX(i) * 100.0)) / 100.0);

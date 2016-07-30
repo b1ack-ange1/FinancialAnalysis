@@ -18,6 +18,7 @@ public class FlagConfig {
     double percentageMaxTarget = 0.27;
     double allowableGapUp = 0.99;
     double minPvoHist = 8.0;
+    double zigzagThreshold = 0.2;
 
     // ENTRY
 
