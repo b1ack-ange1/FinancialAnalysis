@@ -37,6 +37,6 @@ public class MacdEntry extends Entry {
 
     private double getWeight(double[] macd, double[] macdSignal, double[] macdHist) {
         int i = macd.length - 1;
-        return Math.abs(macdHist[i-4]);
+        return Math.abs(macdHist[i]);
     }
 }

@@ -12,6 +12,8 @@ import com.financialanalysis.strategy.FlagStrategyInput;
 import com.financialanalysis.strategy.FlagStrategy;
 import com.financialanalysis.strategyV2.Strategy;
 import com.financialanalysis.strategyV2.StrategyInput;
+import com.financialanalysis.strategyV2.StrategyOutputV2;
+import com.financialanalysis.strategyV2.bollinger.BollingerStrategy;
 import com.financialanalysis.strategyV2.macd.MacdStrategy;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -41,6 +43,7 @@ public class StrategyRunner {
     private final SymbolStore symbolStore;
     private final StockStore stockStore;
     private final MacdStrategy macdStrategy;
+    private final BollingerStrategy bollingerStrategy;
 
     private final DateTime startDefault = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
     private final DateTime runStrategiesStartDate = DateTimeUtils.getToday().minusDays(200);
@@ -51,10 +54,11 @@ public class StrategyRunner {
     private final FlagConfig config;
 
     @Inject
-    public StrategyRunner(SymbolStore symbolStore, StockStore stockStore, MacdStrategy macdStrategy) {
+    public StrategyRunner(SymbolStore symbolStore, StockStore stockStore, MacdStrategy macdStrategy, BollingerStrategy bollingerStrategy) {
         this.symbolStore = symbolStore;
         this.stockStore = stockStore;
         this.macdStrategy = macdStrategy;
+        this.bollingerStrategy = bollingerStrategy;
 
         this.exector = Executors.newFixedThreadPool(10);
         this.config = FlagConfig.readFromFile();
@@ -64,14 +68,14 @@ public class StrategyRunner {
      * Run's all strategies on select stocks
      */
     @SneakyThrows
-    public List<StrategyOutput> runOnStocks(List<StockFA> stocks) {
+    public List<StrategyOutputV2> runOnStocks(List<StockFA> stocks) {
         log.info("Beginning to run on select stocks.");
 
-        List<StrategyOutput> results = new LinkedList<>();
+        List<StrategyOutputV2> results = new LinkedList<>();
 
         stocks.forEach(s -> {
-            StrategyOutput output = runStockV2(s);
-            if(!output.isEmpty()) {
+            StrategyOutputV2 output = runStockV2(s);
+            if (!output.isEmpty()) {
                 results.add(output);
             }
         });
@@ -83,11 +87,11 @@ public class StrategyRunner {
      * Run's all strategies on all stocks
      */
     @SneakyThrows
-    public List<StrategyOutput> run() {
+    public List<StrategyOutputV2> run() {
         log.info("Beginning to run all stocks.");
         List<Symbol> allSymbols = symbolStore.load();
 
-        List<StrategyOutput> results = Lists.newArrayList();
+        List<StrategyOutputV2> results = Lists.newArrayList();
         List<List<Symbol>> lists = Lists.partition(allSymbols, MAX_BATCH_SIZE);
 
         lists.forEach(list -> {
@@ -95,7 +99,7 @@ public class StrategyRunner {
             Collection<StockFA> stocks = stockMap.values();
 
             // List of futures to be return from stocks
-            List<Future<StrategyOutput>> futures = Lists.newArrayList();
+            List<Future<StrategyOutputV2>> futures = Lists.newArrayList();
 
             // For each stock, submit it to the exector
             stocks.forEach(s -> {
@@ -104,7 +108,7 @@ public class StrategyRunner {
 
             futures.forEach(f -> {
                 try {
-                    StrategyOutput output = f.get();
+                    StrategyOutputV2 output = f.get();
                     if(!output.isEmpty()) {
                         results.add(output);
                     }
@@ -120,29 +124,29 @@ public class StrategyRunner {
         return results;
     }
 
-    private StrategyOutput runStockV2(StockFA stock) {
-        Map<Strategy, StrategyOutput> map = new HashMap<>();
+    private StrategyOutputV2 runStockV2(StockFA stock) {
         DateTime start = getStartDate();
         DateTime end = getEndDate();
         List<StockPrice> stockPrices = getValidStockPrices(stock.getHistory(), start, end);
         StockFA filteredStock = new StockFA(stock.getSymbol(), stockPrices);
 
-        StrategyInput macdInput = new StrategyInput(filteredStock);
-        StrategyOutput macdOutput = macdStrategy.run(macdInput);
-        map.put(macdStrategy, macdOutput);
+        StrategyInput input = new StrategyInput(filteredStock);
+        StrategyOutputV2 macdOutput = bollingerStrategy.run(input); //macdStrategy.run(input);
+
 
         return macdOutput;
     }
 
-    private Future<StrategyOutput> runStockFutureV2(StockFA stock) {
+    private Future<StrategyOutputV2> runStockFutureV2(StockFA stock) {
         DateTime start = getStartDate();
         DateTime end = getEndDate();
         List<StockPrice> stockPrices = getValidStockPrices(stock.getHistory(), start, end);
         StockFA filteredStock = new StockFA(stock.getSymbol(), stockPrices);
 
-        StrategyInput macdInput = new StrategyInput(filteredStock);
+        StrategyInput input = new StrategyInput(filteredStock);
 
-        return exector.submit(() -> macdStrategy.run(macdInput));
+//        return exector.submit(() -> macdStrategy.run(input));
+        return exector.submit(() -> bollingerStrategy.run(input));
     }
 
     private DateTime getStartDate() {

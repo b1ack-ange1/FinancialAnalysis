@@ -258,8 +258,6 @@ public class FlagStrategy {
      * Look back until the start of the flag pole on a rolling 3 day window
      * 1) Closing prices must not be all the same
      * 2) Open and closing prices must be different
-     * 3) ?? Volume must be greater than ??
-     * @return
      */
     private boolean determineIfSufficientMovement(int startIndex, int startOfFlagPole) {
         int inSufficientMovementCount1 = 0;

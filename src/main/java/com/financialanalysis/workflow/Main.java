@@ -49,6 +49,9 @@ public class Main {
     @Parameter(names={"-dd"}, description = "Show entire report for each trade.")
     public static boolean detailedEntire;
 
+    @Parameter(names={"-GLvsW"}, description = "Show Gain Loss vs Weight chart.")
+    public static boolean GLvsW;
+
     @Parameter(names={"--flagConfig", "-fc"}, description = "Restore default flag config file.")
     public static boolean flagConfig;
 

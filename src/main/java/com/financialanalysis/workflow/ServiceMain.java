@@ -11,6 +11,7 @@ import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
 import com.financialanalysis.strategy.FlagConfig;
 import com.financialanalysis.strategy.StrategyOutput;
+import com.financialanalysis.strategyV2.StrategyOutputV2;
 import com.financialanalysis.updater.StockRetriever;
 import com.financialanalysis.updater.StockUpdater;
 import com.financialanalysis.updater.SymbolUpdater;
@@ -86,7 +87,7 @@ public class ServiceMain implements Runnable {
         }
 
         if(runStrategies) {
-            List<StrategyOutput> allResults = strategyRunner.run();
+            List<StrategyOutputV2> allResults = strategyRunner.run();
             List<Report> reports = reporter.generateReports(allResults);
             Path path = chartStore.save(reports);
             emailer.emailReports(path);
@@ -109,7 +110,7 @@ public class ServiceMain implements Runnable {
 
     public void backtestAll() {
         // Run on all stocks and save results
-        List<StrategyOutput> outputs = strategyRunner.run();
+        List<StrategyOutputV2> outputs = strategyRunner.run();
         List<Report> reports = reporter.generateReports(outputs);
 
         doReportingForBacktest(outputs, reports);
@@ -121,11 +122,11 @@ public class ServiceMain implements Runnable {
 
     public void backtestUntil(int numFound) {
         // Run until we have found numFound flag
-        List<StrategyOutput> outputs = Lists.newArrayList();
+        List<StrategyOutputV2> outputs = Lists.newArrayList();
         StringBuilder buf = new StringBuilder();
         do {
             List<StockFA> stock = stockRetriever.getUniqueRandomStocks(1);
-            List<StrategyOutput> newOutputs = strategyRunner.runOnStocks(stock);
+            List<StrategyOutputV2> newOutputs = strategyRunner.runOnStocks(stock);
             if(!newOutputs.isEmpty()) {
                 buf.append(newOutputs.get(0).getSymbol().getSymbol() + ",");
             }
@@ -142,7 +143,7 @@ public class ServiceMain implements Runnable {
         List<Symbol> symbols = symbolStore.load(inputSymbols);
 
         List<StockFA> stocks = Lists.newArrayList(stockStore.load(symbols).values());
-        List<StrategyOutput> outputs = Lists.newArrayList(strategyRunner.runOnStocks(stocks));
+        List<StrategyOutputV2> outputs = Lists.newArrayList(strategyRunner.runOnStocks(stocks));
 
         List<Report> reports = reporter.generateReports(outputs);
         doReportingForBacktest(outputs, reports);
@@ -152,7 +153,7 @@ public class ServiceMain implements Runnable {
         log.info("Stocks Num: " + symbolNames.size());
     }
 
-    private void doReportingForBacktest(List<StrategyOutput> outputs, List<Report> reports) {
+    private void doReportingForBacktest(List<StrategyOutputV2> outputs, List<Report> reports) {
         if(saveCharts) {
             chartStore.saveBackTestCharts(reports);
         }
@@ -165,7 +166,10 @@ public class ServiceMain implements Runnable {
         if(detailedEntire) {
             reporter.generateDetailedAccountSummary(outputs);
         }
+        if(GLvsW) {
+            reporter.generateGLvsWeight(outputs);
+        }
         reporter.generateAverageAccountSummary(outputs);
-        reporter.generateGLvsWeight(outputs);
+
     }
 }

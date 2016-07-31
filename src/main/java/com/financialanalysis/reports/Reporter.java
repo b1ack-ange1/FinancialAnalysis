@@ -3,6 +3,7 @@ package com.financialanalysis.reports;
 import com.financialanalysis.data.Account;
 import com.financialanalysis.graphing.LineChart;
 import com.financialanalysis.strategy.StrategyOutput;
+import com.financialanalysis.strategyV2.StrategyOutputV2;
 import lombok.extern.log4j.Log4j;
 
 import java.util.HashMap;
@@ -13,11 +14,11 @@ import java.util.stream.Collectors;
 @Log4j
 public class Reporter {
 
-    public List<Report> generateReports(List<StrategyOutput> allResults) {
-        return allResults.stream().map(s -> s.getCharts()).flatMap(c -> c.stream()).map(c -> new Report(c)).collect(Collectors.toList());
+    public List<Report> generateReports(List<StrategyOutputV2> allResults) {
+        return allResults.stream().map(c -> new Report(c.getChart().get())).collect(Collectors.toList());
     }
 
-    public String generateIndividualAccountSummary(List<StrategyOutput> allResults) {
+    public String generateIndividualAccountSummary(List<StrategyOutputV2> allResults) {
         StringBuffer buf = new StringBuffer();
 
         allResults.forEach(output -> {
@@ -29,14 +30,14 @@ public class Reporter {
         return buf.toString();
     }
 
-    public String generateIndividualAccountSummary(List<StrategyOutput> allResults, double gainLossThreshold) {
-        List<StrategyOutput> list = allResults.stream().filter(
+    public String generateIndividualAccountSummary(List<StrategyOutputV2> allResults, double gainLossThreshold) {
+        List<StrategyOutputV2> list = allResults.stream().filter(
                 o -> o.getAccount().getPercentageGainLoss() < -gainLossThreshold || gainLossThreshold < o.getAccount().getPercentageGainLoss())
                 .collect(Collectors.toList());
         return generateIndividualAccountSummary(list);
     }
 
-    public String generateDetailedAccountSummary(List<StrategyOutput> allResults) {
+    public String generateDetailedAccountSummary(List<StrategyOutputV2> allResults) {
         StringBuffer buf = new StringBuffer();
 
         allResults.forEach(output -> {
@@ -48,8 +49,8 @@ public class Reporter {
         return buf.toString();
     }
 
-    public String generateAverageAccountSummary(List<StrategyOutput> allResults) {
-        List<Account> accounts = allResults.stream().map(StrategyOutput::getAccount).collect(Collectors.toList());
+    public String generateAverageAccountSummary(List<StrategyOutputV2> allResults) {
+        List<Account> accounts = allResults.stream().map(StrategyOutputV2::getAccount).collect(Collectors.toList());
         double gainNotZero = 0;
         double numNotZero = 0;
 
@@ -85,8 +86,8 @@ public class Reporter {
         return buf.toString();
     }
 
-    public void generatePercentilesChart(List<StrategyOutput> allResults) {
-        List<Account> accounts = allResults.stream().map(StrategyOutput::getAccount).collect(Collectors.toList());
+    public void generatePercentilesChart(List<StrategyOutputV2> allResults) {
+        List<Account> accounts = allResults.stream().map(StrategyOutputV2::getAccount).collect(Collectors.toList());
         if(accounts.isEmpty() || accounts.size() < 2) return;
 
         int min = Integer.MAX_VALUE;
@@ -144,8 +145,8 @@ public class Reporter {
         lineChart.render();
     }
 
-    public void generateGLvsWeight(List<StrategyOutput> allResults) {
-        List<Account> accounts = allResults.stream().map(StrategyOutput::getAccount).collect(Collectors.toList());
+    public void generateGLvsWeight(List<StrategyOutputV2> allResults) {
+        List<Account> accounts = allResults.stream().map(StrategyOutputV2::getAccount).collect(Collectors.toList());
         Map<Double, Double> result = new HashMap<>();
 
         for(Account account : accounts) {
