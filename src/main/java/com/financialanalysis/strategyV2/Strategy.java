@@ -38,8 +38,6 @@ public abstract class Strategy {
 
         Account account = Account.createDefaultAccount();
         double[] closingPrices = getClosingPrices(stock.getHistory());
-        double[] lowPrices = getLowPrices(stock.getHistory());
-        double[] highPrices = getHighPrices(stock.getHistory());
         List<DateTime> dates = getDates(stock.getHistory());
 
         boolean bought = false;
@@ -58,6 +56,8 @@ public abstract class Strategy {
                 account.sellAll(closingPrices[i], dates.get(i), stock.getSymbol());
                 bought = false;
             }
+
+            account.rebalance(closingPrices[i]);
         }
 
         if(!account.getActivity().isEmpty()) {

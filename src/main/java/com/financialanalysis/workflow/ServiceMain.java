@@ -115,9 +115,9 @@ public class ServiceMain implements Runnable {
 
         doReportingForBacktest(outputs, reports);
 
-        List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
-        log.info(String.join(",", symbolNames));
-        log.info(symbolNames.size());
+//        List<String> symbolNames = outputs.stream().map(o -> o.getSymbol().getSymbol()).collect(Collectors.toList());
+//        log.info(String.join(",", symbolNames));
+//        log.info(symbolNames.size());
     }
 
     public void backtestUntil(int numFound) {

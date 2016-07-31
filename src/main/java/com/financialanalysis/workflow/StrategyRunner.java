@@ -10,7 +10,6 @@ import com.financialanalysis.strategy.FlagConfig;
 import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.strategy.FlagStrategyInput;
 import com.financialanalysis.strategy.FlagStrategy;
-import com.financialanalysis.strategyV2.Strategy;
 import com.financialanalysis.strategyV2.StrategyInput;
 import com.financialanalysis.strategyV2.StrategyOutputV2;
 import com.financialanalysis.strategyV2.bollinger.BollingerStrategy;
@@ -25,7 +24,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;

@@ -35,7 +35,7 @@ public class MacdChart extends Chart {
         double[] macd = addConst(results.getMacd(), ave);
         double[] macdSignal = addConst(results.getMacdSignal(), ave);
 
-        String info = String.format("%s[%.2f]", stock.getSymbol(), account.getPercentageGainLoss());
+        String info = String.format("%s[%.2f]_[%.2f]", stock.getSymbol(), account.getPercentageGainLoss(), account.getAverageWeight());
         StockChart stockChart = new StockChart("MACD_" + info);
         stockChart.setYAxis("Price");
         stockChart.setXAxis("Date");

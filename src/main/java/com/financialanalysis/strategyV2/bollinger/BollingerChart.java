@@ -29,7 +29,7 @@ public class BollingerChart extends Chart {
         double[] mid = result.getBbMid();
         double[] low = result.getBbLow();
 
-        String info = String.format("%s[%.2f]", stock.getSymbol(), account.getPercentageGainLoss());
+        String info = String.format("%s[%.2f]_[%.2f]", stock.getSymbol(), account.getPercentageGainLoss(), account.getAverageWeight());
         StockChart stockChart = new StockChart("Bollinger_" + info);
         stockChart.setYAxis("Price");
         stockChart.setXAxis("Date");
