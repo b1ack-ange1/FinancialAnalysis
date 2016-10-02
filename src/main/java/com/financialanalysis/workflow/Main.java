@@ -2,18 +2,15 @@ package com.financialanalysis.workflow;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.internal.Lists;
 import com.financialanalysis.guice.FAModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import lombok.extern.log4j.Log4j;
 
-import java.util.Arrays;
-import java.util.List;
-
 @Log4j
 public class Main {
-    @Parameter(names={"--backtest", "-b"}, description = "Run a back test.")
+    //BACKTEST PARAMS
+    @Parameter(names={"--backtest", "-b"}, description = "Run a standard back test.")
     public static boolean backtest = false;
 
     @Parameter(names={"--backtestNum", "-n"}, description = "Run a back test until be get this many successful signals.")
@@ -28,14 +25,23 @@ public class Main {
     @Parameter(names={"--backtestEnd", "-bEnd"}, description = "Back test start end. If empty, use today")
     public static String backtestEnd;
 
+
+    //UPDATE PARAMS
     @Parameter(names={"--updateSymbols", "-usym"}, description = "Update the stored symbols from Questrade.")
     public static boolean updateSymbols;
 
     @Parameter(names={"--updateStocks", "-usto"}, description = "Update the stored stock date.")
     public static boolean updateStocks;
 
+
+    //PREDICTIVE RUN PARAMS
     @Parameter(names={"--runStrategies", "-rs"}, description = "Run strategies for today.")
     public static boolean runStrategies;
+
+
+    //REPORT PARAMS
+    @Parameter(names={"--export", "-e"}, description = "Stock to export to csv.")
+    public static String export;
 
     @Parameter(names={"--chart", "-c"}, description = "Save charts from run.")
     public static boolean saveCharts;

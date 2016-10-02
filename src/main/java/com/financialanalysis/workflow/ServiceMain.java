@@ -1,6 +1,7 @@
 package com.financialanalysis.workflow;
 
 import com.financialanalysis.data.StockFA;
+import com.financialanalysis.data.StockPrice;
 import com.financialanalysis.data.Symbol;
 import com.financialanalysis.questrade.Questrade;
 import com.financialanalysis.reports.Emailer;
@@ -10,7 +11,6 @@ import com.financialanalysis.store.ChartStore;
 import com.financialanalysis.store.StockStore;
 import com.financialanalysis.store.SymbolStore;
 import com.financialanalysis.strategy.FlagConfig;
-import com.financialanalysis.strategy.StrategyOutput;
 import com.financialanalysis.strategyV2.StrategyOutputV2;
 import com.financialanalysis.updater.StockRetriever;
 import com.financialanalysis.updater.StockUpdater;
@@ -20,8 +20,11 @@ import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j;
+import org.apache.commons.io.FileUtils;
 
+import java.io.File;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -103,6 +106,10 @@ public class ServiceMain implements Runnable {
             }
         }
 
+        if(!Strings.isNullOrEmpty(export.trim())) {
+            exportStock(export.trim());
+        }
+
         long elapsedTime = System.nanoTime() - start;
         double seconds = (double)elapsedTime / 1000000000.0;
         log.info(String.format("Took %d seconds", (int) seconds));
@@ -170,6 +177,23 @@ public class ServiceMain implements Runnable {
             reporter.generateGLvsWeight(outputs);
         }
         reporter.generateAverageAccountSummary(outputs);
+    }
 
+    @SneakyThrows
+    private void exportStock(String symbol) {
+        Collection<StockFA> stocks = stockStore.load(symbolStore.load(Lists.newArrayList(symbol))).values();
+        StockFA stockFA = stocks.iterator().next();
+
+        String outputDir = "var/output/";
+        StringBuilder builder = new StringBuilder();
+        String header = "Date, Volume, Low, High, Open, Close\n";
+        builder.append(header);
+        for(StockPrice sp : stockFA.getHistory()) {
+            String date = sp.getDate().toString().split("T")[0];
+            builder.append(date+","+sp.getVolume()+","+sp.getLow()+","+sp.getHigh()+","+sp.getOpen()+","+sp.getClose()+"\n");
+        }
+
+        File output = new File(outputDir + stockFA.getSymbol().getSymbol() + ".csv");
+        FileUtils.writeStringToFile(output, builder.toString());
     }
 }
