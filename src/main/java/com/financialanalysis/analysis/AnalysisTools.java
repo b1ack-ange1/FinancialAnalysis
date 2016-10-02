@@ -116,6 +116,26 @@ public class AnalysisTools {
         return sum / a.length;
     }
 
+    public static double min(double[] a) {
+        double min = 100000000.0;
+        for(double d : a) {
+            if(d < min) {
+                min = d;
+            }
+        }
+        return min;
+    }
+
+    public static double max(double[] a) {
+        double max = -1000000000.0;
+        for(double d : a) {
+            if(d > max) {
+                max = d;
+            }
+        }
+        return max;
+    }
+
     public static double[] addConst(double[] a, double s) {
         double[] n = new double[a.length];
         for(int i = 0; i < a.length; i++) {

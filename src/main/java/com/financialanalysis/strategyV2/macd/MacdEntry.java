@@ -28,7 +28,7 @@ public class MacdEntry extends Entry {
         int i = macd.length - 1;
         double weight = getWeight(macd, macdSignal, macdHist);
 
-        if((macd[i-1] < macdSignal[i-1]) && (macd[i] > macdSignal[i])) {
+        if((macd[i-1] < macdSignal[i-1]) && (macd[i] > macdSignal[i]) && macd[i] < -2.0) {
             return new EntryDecision(true, weight);
         }
 

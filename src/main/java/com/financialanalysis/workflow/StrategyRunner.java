@@ -13,6 +13,8 @@ import com.financialanalysis.strategy.FlagStrategy;
 import com.financialanalysis.strategyV2.StrategyInput;
 import com.financialanalysis.strategyV2.StrategyOutputV2;
 import com.financialanalysis.strategyV2.bollinger.BollingerStrategy;
+import com.financialanalysis.strategyV2.bollingermacd.BollingerMacdChart;
+import com.financialanalysis.strategyV2.bollingermacd.BollingerMacdStategy;
 import com.financialanalysis.strategyV2.macd.MacdStrategy;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -42,6 +44,7 @@ public class StrategyRunner {
     private final StockStore stockStore;
     private final MacdStrategy macdStrategy;
     private final BollingerStrategy bollingerStrategy;
+    private final BollingerMacdStategy bollingerMacdStategy;
 
     private final DateTime startDefault = new DateTime("2015-01-01", DateTimeZone.forID("America/Toronto")).withTimeAtStartOfDay();
     private final DateTime runStrategiesStartDate = DateTimeUtils.getToday().minusDays(200);
@@ -52,11 +55,16 @@ public class StrategyRunner {
     private final FlagConfig config;
 
     @Inject
-    public StrategyRunner(SymbolStore symbolStore, StockStore stockStore, MacdStrategy macdStrategy, BollingerStrategy bollingerStrategy) {
+    public StrategyRunner(SymbolStore symbolStore,
+                          StockStore stockStore,
+                          MacdStrategy macdStrategy,
+                          BollingerStrategy bollingerStrategy,
+                          BollingerMacdStategy bollingerMacdStategy) {
         this.symbolStore = symbolStore;
         this.stockStore = stockStore;
         this.macdStrategy = macdStrategy;
         this.bollingerStrategy = bollingerStrategy;
+        this.bollingerMacdStategy = bollingerMacdStategy;
 
         this.exector = Executors.newFixedThreadPool(10);
         this.config = FlagConfig.readFromFile();
@@ -129,10 +137,10 @@ public class StrategyRunner {
         StockFA filteredStock = new StockFA(stock.getSymbol(), stockPrices);
 
         StrategyInput input = new StrategyInput(filteredStock);
-        StrategyOutputV2 macdOutput = bollingerStrategy.run(input); //macdStrategy.run(input);
+        StrategyOutputV2 output = bollingerStrategy.run(input); //macdStrategy.run(input);
+//        StrategyOutputV2 output = bollingerMacdStategy.run(input);
 
-
-        return macdOutput;
+        return output;
     }
 
     private Future<StrategyOutputV2> runStockFutureV2(StockFA stock) {
@@ -145,6 +153,7 @@ public class StrategyRunner {
 
 //        return exector.submit(() -> macdStrategy.run(input));
         return exector.submit(() -> bollingerStrategy.run(input));
+//        return exector.submit(() -> bollingerMacdStategy.run(input));
     }
 
     private DateTime getStartDate() {
